@@ -9,16 +9,19 @@ import SignUpScreen from './src/screens/SignUpScreen';
 import SignInScreen from './src/screens/SignInScreen';
 import CustomerHomePage from './src/screens/CustomerHomePage';
 import AdminHomePage from './src/screens/AdminHomePage';
+import ListingDetailsScreen from './src/screens/ListingDetailsScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 import SideNav from './src/components/SideNav';
 import { authService, UserData } from './src/firebase';
 
-type ScreenType = 'customer' | 'admin' | 'signup' | 'signin';
+type ScreenType = 'customer' | 'admin' | 'signup' | 'signin' | 'listingDetails' | 'profile';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('customer');
   const [sideNavVisible, setSideNavVisible] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedListing, setSelectedListing] = useState<any>(null);
 
   useEffect(() => {
     checkAuthState();
@@ -83,6 +86,23 @@ function App() {
     }
   };
 
+  const handleListingDetails = (listing: any) => {
+    setSelectedListing(listing);
+    setCurrentScreen('listingDetails');
+  };
+
+  const handleProfile = () => {
+    setCurrentScreen('profile');
+  };
+
+  const handleBackFromDetails = () => {
+    setCurrentScreen(userData?.role === 'admin' ? 'admin' : 'customer');
+  };
+
+  const handleBackFromProfile = () => {
+    setCurrentScreen(userData?.role === 'admin' ? 'admin' : 'customer');
+  };
+
   const renderCurrentScreen = () => {
     switch (currentScreen) {
       case 'signup':
@@ -90,10 +110,26 @@ function App() {
       case 'signin':
         return <SignInScreen onSignInSuccess={handleSignInSuccess} onBack={handleBackFromAuth} />;
       case 'admin':
-        return <AdminHomePage />;
+        return <AdminHomePage onListingDetails={handleListingDetails} />;
       case 'customer':
+        return <CustomerHomePage onListingDetails={handleListingDetails} />;
+      case 'listingDetails':
+        return selectedListing ? (
+          <ListingDetailsScreen 
+            listing={selectedListing} 
+            onBack={handleBackFromDetails} 
+          />
+        ) : null;
+      case 'profile':
+        return userData ? (
+          <ProfileScreen 
+            user={userData} 
+            onBack={handleBackFromProfile} 
+            onSignOut={handleSignOut} 
+          />
+        ) : null;
       default:
-        return <CustomerHomePage />;
+        return <CustomerHomePage onListingDetails={handleListingDetails} />;
     }
   };
 
@@ -150,6 +186,10 @@ function App() {
           setCurrentScreen('signup');
         }}
         onSignOut={handleSignOut}
+        onProfile={() => {
+          setSideNavVisible(false);
+          handleProfile();
+        }}
         isLoggedIn={!!userData}
         userName={userData?.name}
       />

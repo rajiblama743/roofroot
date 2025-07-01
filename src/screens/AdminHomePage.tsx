@@ -4,7 +4,11 @@ import { authService, realEstateService, RealEstateListing } from '../firebase';
 import { adminService, AdminUserData } from '../firebase/adminService';
 import ListingForm from '../components/ListingForm';
 
-const AdminHomePage: React.FC = () => {
+interface AdminHomePageProps {
+  onListingDetails: (listing: RealEstateListing) => void;
+}
+
+const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
   const [listings, setListings] = useState<RealEstateListing[]>([]);
   const [users, setUsers] = useState<AdminUserData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -200,6 +204,12 @@ const AdminHomePage: React.FC = () => {
                     <Text style={styles.listingImageUrl}>🖼️ Image available</Text>
                   )}
                   <View style={styles.listingActions}>
+                    <TouchableOpacity 
+                      style={styles.viewButton} 
+                      onPress={() => onListingDetails(listing)}
+                    >
+                      <Text style={styles.viewButtonText}>View</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity 
                       style={styles.editButton} 
                       onPress={() => handleEditListing(listing)}
@@ -477,6 +487,19 @@ const styles = StyleSheet.create({
   listingActions: {
     flexDirection: 'row',
     gap: 8,
+  },
+  viewButton: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    flex: 1,
+    alignItems: 'center',
+  },
+  viewButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   editButton: {
     backgroundColor: '#6366F1',

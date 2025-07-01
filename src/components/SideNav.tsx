@@ -7,6 +7,7 @@ interface SideNavProps {
   onSignIn: () => void;
   onSignUp: () => void;
   onSignOut: () => void;
+  onProfile: () => void;
   isLoggedIn: boolean;
   userName?: string;
 }
@@ -17,6 +18,7 @@ const SideNav: React.FC<SideNavProps> = ({
   onSignIn, 
   onSignUp, 
   onSignOut, 
+  onProfile,
   isLoggedIn, 
   userName 
 }) => {
@@ -41,14 +43,18 @@ const SideNav: React.FC<SideNavProps> = ({
 
           <View style={styles.content}>
             {isLoggedIn ? (
-              // Logged in user - show user info and sign out
+              // Logged in user - show user info and profile options
               <>
                 <Text style={styles.sectionTitle}>Account</Text>
                 {userName && (
-                  <View style={styles.userInfo}>
+                  <TouchableOpacity style={styles.userInfo} onPress={onProfile}>
                     <Text style={styles.userName}>{userName}</Text>
-                  </View>
+                    <Text style={styles.profileHint}>Tap to view profile</Text>
+                  </TouchableOpacity>
                 )}
+                <TouchableOpacity style={styles.navButton} onPress={onProfile}>
+                  <Text style={styles.navButtonText}>👤 My Profile</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={[styles.navButton, styles.signOutButton]} onPress={onSignOut}>
                   <Text style={[styles.navButtonText, styles.signOutButtonText]}>Sign Out</Text>
                 </TouchableOpacity>
@@ -152,6 +158,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1E293B',
     textAlign: 'center',
+  },
+  profileHint: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 4,
   },
   navButton: {
     paddingVertical: 16,

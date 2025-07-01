@@ -4,7 +4,11 @@ import { authService, realEstateService, RealEstateListing } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase/firebaseConfig';
 
-const CustomerHomePage: React.FC = () => {
+interface CustomerHomePageProps {
+  onListingDetails: (listing: RealEstateListing) => void;
+}
+
+const CustomerHomePage: React.FC<CustomerHomePageProps> = ({ onListingDetails }) => {
   const [listings, setListings] = useState<RealEstateListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState<string>('');
@@ -66,7 +70,12 @@ const CustomerHomePage: React.FC = () => {
           <View style={styles.listingsContainer}>
             <Text style={styles.sectionTitle}>Available Properties ({listings.length})</Text>
             {listings.map((listing) => (
-              <View key={listing.id} style={styles.listingCard}>
+              <TouchableOpacity 
+                key={listing.id} 
+                style={styles.listingCard}
+                onPress={() => onListingDetails(listing)}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.listingTitle}>{listing.title}</Text>
                 <Text style={styles.listingDescription}>{listing.description}</Text>
                 <Text style={styles.listingPrice}>${listing.price.toLocaleString()}</Text>
@@ -76,7 +85,8 @@ const CustomerHomePage: React.FC = () => {
                 {listing.imageUrl && (
                   <Text style={styles.listingImageUrl}>🖼️ View Photos</Text>
                 )}
-              </View>
+                <Text style={styles.tapHint}>Tap to view details</Text>
+              </TouchableOpacity>
             ))}
           </View>
         ) : (
@@ -184,6 +194,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6366F1',
     fontWeight: '500',
+  },
+  tapHint: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontStyle: 'italic',
+    marginTop: 8,
   },
   emptyContainer: {
     flex: 1,

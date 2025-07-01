@@ -8,7 +8,8 @@ import {
   fetchSignInMethodsForEmail,
   signInWithCredential,
   EmailAuthProvider,
-  reauthenticateWithCredential
+  reauthenticateWithCredential,
+  updatePassword
 } from 'firebase/auth';
 import { auth, db } from './firebaseConfig';
 import { setDoc, doc, serverTimestamp, getDoc, deleteDoc } from 'firebase/firestore';
@@ -19,6 +20,7 @@ export interface AuthError {
 }
 
 export interface UserData {
+  uid: string;
   name: string;
   email: string;
   role: 'customer' | 'admin';
@@ -139,7 +141,10 @@ export const authService = {
     try {
       const userDoc = await getDoc(doc(db, 'users', userId));
       if (userDoc.exists()) {
-        return userDoc.data() as UserData;
+        return {
+          uid: userId,
+          ...userDoc.data()
+        } as UserData;
       }
       return null;
     } catch (error) {
@@ -171,5 +176,49 @@ export const authService = {
    */
   onAuthStateChanged(callback: (user: User | null) => void) {
     return auth.onAuthStateChanged(callback);
+  },
+
+  /**
+   * Update the current user's password
+   */
+  async updatePassword(newPassword: string): Promise<void> {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw {
+          code: 'auth/no-user',
+          message: 'No user is currently signed in'
+        } as AuthError;
+      }
+
+      await updatePassword(currentUser, newPassword);
+    } catch (error) {
+      console.error('Error updating password:', error);
+      throw error as AuthError;
+    }
+  },
+
+  /**
+   * Delete the current user's account from both Auth and Firestore
+   */
+  async deleteUserAccount(): Promise<void> {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw {
+          code: 'auth/no-user',
+          message: 'No user is currently signed in'
+        } as AuthError;
+      }
+
+      // First, delete from Firestore
+      await deleteDoc(doc(db, 'users', currentUser.uid));
+      
+      // Then, delete from Firebase Authentication
+      await deleteUser(currentUser);
+    } catch (error) {
+      console.error('Error deleting user account:', error);
+      throw error as AuthError;
+    }
   }
 }; 
