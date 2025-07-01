@@ -7,6 +7,7 @@ export interface RealEstateListing {
   description: string;
   price: number;
   location?: string;
+  imageUrl?: string;
   bedrooms?: number;
   bathrooms?: number;
   squareFeet?: number;
@@ -20,8 +21,13 @@ export const realEstateService = {
    */
   async createListing(listing: Omit<RealEstateListing, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
-      const docRef = await addDoc(collection(db, 'realEstate'), {
-        ...listing,
+      // Filter out undefined values to prevent Firestore errors
+      const cleanListing = Object.fromEntries(
+        Object.entries(listing).filter(([_, value]) => value !== undefined)
+      );
+      
+      const docRef = await addDoc(collection(db, 'listing'), {
+        ...cleanListing,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -37,7 +43,7 @@ export const realEstateService = {
    */
   async getAllListings(): Promise<RealEstateListing[]> {
     try {
-      const querySnapshot = await getDocs(collection(db, 'realEstate'));
+      const querySnapshot = await getDocs(collection(db, 'listing'));
       const listings: RealEstateListing[] = [];
       querySnapshot.forEach((doc) => {
         listings.push({
@@ -57,7 +63,7 @@ export const realEstateService = {
    */
   async getListingById(id: string): Promise<RealEstateListing | null> {
     try {
-      const docRef = doc(db, 'realEstate', id);
+      const docRef = doc(db, 'listing', id);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         return {
@@ -77,9 +83,14 @@ export const realEstateService = {
    */
   async updateListing(id: string, updates: Partial<RealEstateListing>): Promise<void> {
     try {
-      const docRef = doc(db, 'realEstate', id);
+      // Filter out undefined values to prevent Firestore errors
+      const cleanUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([_, value]) => value !== undefined)
+      );
+      
+      const docRef = doc(db, 'listing', id);
       await updateDoc(docRef, {
-        ...updates,
+        ...cleanUpdates,
         updatedAt: serverTimestamp(),
       });
     } catch (error) {
@@ -93,7 +104,7 @@ export const realEstateService = {
    */
   async deleteListing(id: string): Promise<void> {
     try {
-      const docRef = doc(db, 'realEstate', id);
+      const docRef = doc(db, 'listing', id);
       await deleteDoc(docRef);
     } catch (error) {
       console.error('Error deleting listing:', error);

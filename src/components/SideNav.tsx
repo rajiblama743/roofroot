@@ -30,7 +30,10 @@ const SideNav: React.FC<SideNavProps> = ({
       <View style={styles.overlay}>
         <View style={styles.sideNav}>
           <View style={styles.header}>
-            <Text style={styles.title}>RoofRoot</Text>
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>RoofRoot</Text>
+              <Text style={styles.slogan}>Find Your Dream Home</Text>
+            </View>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
@@ -100,10 +103,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
+  titleContainer: {
+    flexDirection: 'column',
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#1E293B',
+  },
+  slogan: {
+    fontSize: 16,
+    color: '#64748B',
+    fontWeight: 'normal',
   },
   closeButton: {
     width: 32,

@@ -64,7 +64,7 @@ const CustomerHomePage: React.FC = () => {
           </View>
         ) : listings.length > 0 ? (
           <View style={styles.listingsContainer}>
-            <Text style={styles.sectionTitle}>Available Properties</Text>
+            <Text style={styles.sectionTitle}>Available Properties ({listings.length})</Text>
             {listings.map((listing) => (
               <View key={listing.id} style={styles.listingCard}>
                 <Text style={styles.listingTitle}>{listing.title}</Text>
@@ -72,6 +72,9 @@ const CustomerHomePage: React.FC = () => {
                 <Text style={styles.listingPrice}>${listing.price.toLocaleString()}</Text>
                 {listing.location && (
                   <Text style={styles.listingLocation}>📍 {listing.location}</Text>
+                )}
+                {listing.imageUrl && (
+                  <Text style={styles.listingImageUrl}>🖼️ View Photos</Text>
                 )}
               </View>
             ))}
@@ -175,6 +178,12 @@ const styles = StyleSheet.create({
   listingLocation: {
     fontSize: 12,
     color: '#94A3B8',
+    marginBottom: 4,
+  },
+  listingImageUrl: {
+    fontSize: 12,
+    color: '#6366F1',
+    fontWeight: '500',
   },
   emptyContainer: {
     flex: 1,

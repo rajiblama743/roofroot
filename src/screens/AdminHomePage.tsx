@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { authService, realEstateService, RealEstateListing } from '../firebase';
 import { adminService, AdminUserData } from '../firebase/adminService';
+import ListingForm from '../components/ListingForm';
 
 const AdminHomePage: React.FC = () => {
   const [listings, setListings] = useState<RealEstateListing[]>([]);
@@ -9,6 +10,11 @@ const AdminHomePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'listings' | 'users'>('listings');
+  
+  // Listing form states
+  const [showListingForm, setShowListingForm] = useState(false);
+  const [editingListing, setEditingListing] = useState<RealEstateListing | null>(null);
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
 
   useEffect(() => {
     loadListings();
@@ -49,11 +55,15 @@ const AdminHomePage: React.FC = () => {
   };
 
   const handleCreateListing = () => {
-    Alert.alert('Create Listing', 'This feature will be implemented soon!');
+    setFormMode('create');
+    setEditingListing(null);
+    setShowListingForm(true);
   };
 
   const handleEditListing = (listing: RealEstateListing) => {
-    Alert.alert('Edit Listing', `Edit "${listing.title}" - This feature will be implemented soon!`);
+    setFormMode('edit');
+    setEditingListing(listing);
+    setShowListingForm(true);
   };
 
   const handleDeleteListing = async (listing: RealEstateListing) => {
@@ -79,6 +89,22 @@ const AdminHomePage: React.FC = () => {
         },
       ]
     );
+  };
+
+  const handleListingSubmit = async (listingData: Omit<RealEstateListing, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      if (formMode === 'create') {
+        await realEstateService.createListing(listingData);
+        Alert.alert('Success', 'Listing created successfully');
+      } else if (editingListing?.id) {
+        await realEstateService.updateListing(editingListing.id, listingData);
+        Alert.alert('Success', 'Listing updated successfully');
+      }
+      loadListings();
+    } catch (error) {
+      console.error('Error saving listing:', error);
+      Alert.alert('Error', 'Failed to save listing');
+    }
   };
 
   const handleDeleteUser = async (user: AdminUserData) => {
@@ -151,8 +177,6 @@ const AdminHomePage: React.FC = () => {
         </View>
       )}
 
-
-
       <ScrollView style={styles.content}>
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -171,6 +195,9 @@ const AdminHomePage: React.FC = () => {
                   <Text style={styles.listingDescription}>{listing.description}</Text>
                   {listing.location && (
                     <Text style={styles.listingLocation}>📍 {listing.location}</Text>
+                  )}
+                  {listing.imageUrl && (
+                    <Text style={styles.listingImageUrl}>🖼️ Image available</Text>
                   )}
                   <View style={styles.listingActions}>
                     <TouchableOpacity 
@@ -235,6 +262,14 @@ const AdminHomePage: React.FC = () => {
           )
         )}
       </ScrollView>
+
+      <ListingForm
+        visible={showListingForm}
+        onClose={() => setShowListingForm(false)}
+        onSubmit={handleListingSubmit}
+        listing={editingListing}
+        mode={formMode}
+      />
     </View>
   );
 };
@@ -430,6 +465,11 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   listingLocation: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginBottom: 12,
+  },
+  listingImageUrl: {
     fontSize: 12,
     color: '#94A3B8',
     marginBottom: 12,
