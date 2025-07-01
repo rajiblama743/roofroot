@@ -1,16 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { authService, realEstateService, RealEstateListing } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../firebase/firebaseConfig';
 
 const CustomerHomePage: React.FC = () => {
   const [listings, setListings] = useState<RealEstateListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState<string>('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     loadListings();
-    loadUserData();
+    setupAuthListener();
   }, []);
+
+  const setupAuthListener = () => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // User is signed in
+        setIsAuthenticated(true);
+        const userData = await authService.getUserData(user.uid);
+        if (userData) {
+          setUserName(userData.name);
+        }
+      } else {
+        // User is signed out
+        setIsAuthenticated(false);
+        setUserName('');
+      }
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  };
 
   const loadListings = async () => {
     try {
@@ -24,22 +47,12 @@ const CustomerHomePage: React.FC = () => {
     }
   };
 
-  const loadUserData = async () => {
-    const currentUser = authService.getCurrentUser();
-    if (currentUser) {
-      const userData = await authService.getUserData(currentUser.uid);
-      if (userData) {
-        setUserName(userData.name);
-      }
-    }
-  };
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>RoofRoot</Text>
         <Text style={styles.subtitle}>Find Your Dream Home</Text>
-        {userName && (
+        {isAuthenticated && userName && (
           <Text style={styles.welcomeText}>Welcome, {userName}!</Text>
         )}
       </View>

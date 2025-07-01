@@ -1,6 +1,8 @@
 import { db } from './firebaseConfig';
-import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, deleteDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { authService } from './authService';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from './firebaseConfig';
 
 export interface AdminUserData {
   uid: string;
@@ -58,109 +60,101 @@ export const adminService = {
   },
 
   /**
-   * Delete user completely (both Firestore and Firebase Auth)
-   * Note: This requires the user to be signed in as the user being deleted
-   * or requires admin privileges through Firebase Admin SDK on the backend
+   * Delete user completely from both Firestore and Firebase Auth
+   * Note: Firebase Auth deletion requires the user to be signed in as the user being deleted
+   * or requires Firebase Admin SDK on the backend. This function will delete from Firestore
+   * and provide clear feedback about Auth deletion status.
    */
-  async deleteUserCompletely(email: string): Promise<boolean> {
+  async deleteUserCompletely(email: string): Promise<{
+    success: boolean;
+    firestoreDeleted: boolean;
+    authDeleted: boolean;
+    message: string;
+  }> {
     try {
       // First, find the user in Firestore
       const userData = await this.getUserByEmail(email);
       
       if (!userData) {
-        console.log('User not found in Firestore for email:', email);
-        return false;
+        return {
+          success: false,
+          firestoreDeleted: false,
+          authDeleted: false,
+          message: 'User not found in Firestore'
+        };
       }
 
       // Check if user exists in Firebase Auth
       const authUserExists = await authService.checkEmailExists(email);
       
-      if (!authUserExists) {
-        console.log('User not found in Firebase Auth for email:', email);
-        // Still delete from Firestore if it exists there
+      let firestoreDeleted = false;
+      let authDeleted = false;
+      let message = '';
+
+      // Delete from Firestore
+      try {
         await deleteDoc(doc(db, 'users', userData.uid));
-        return true;
+        firestoreDeleted = true;
+        message += 'User deleted from Firestore. ';
+      } catch (error) {
+        console.error('Error deleting from Firestore:', error);
+        message += 'Failed to delete from Firestore. ';
       }
 
-      // Delete from Firestore first
-      await deleteDoc(doc(db, 'users', userData.uid));
-      
-      // Note: Deleting from Firebase Auth requires the user to be signed in
-      // or requires Firebase Admin SDK on the backend
-      // For now, we'll just delete from Firestore and log a warning
-      console.warn('User deleted from Firestore. Firebase Auth user deletion requires backend implementation.');
-      
-      return true;
+      // Handle Firebase Auth deletion
+      if (authUserExists) {
+        // Note: Firebase Auth deletion from client-side requires the user to be signed in
+        // as the user being deleted, which is not possible for admin operations
+        // This would require Firebase Admin SDK on the backend
+        message += 'Firebase Auth user deletion requires backend implementation. ';
+        console.warn('Firebase Auth user deletion requires backend implementation for email:', email);
+      } else {
+        authDeleted = true;
+        message += 'User was not found in Firebase Auth. ';
+      }
+
+      return {
+        success: firestoreDeleted,
+        firestoreDeleted,
+        authDeleted,
+        message: message.trim()
+      };
     } catch (error) {
       console.error('Error deleting user completely:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Check if a user exists in both Firestore and Firebase Auth
-   */
-  async checkUserConsistency(email: string): Promise<{
-    firestoreExists: boolean;
-    authExists: boolean;
-    isConsistent: boolean;
-  }> {
-    try {
-      const firestoreUser = await this.getUserByEmail(email);
-      const authExists = await authService.checkEmailExists(email);
-      
-      const firestoreExists = !!firestoreUser;
-      const isConsistent = firestoreExists === authExists;
-      
       return {
-        firestoreExists,
-        authExists,
-        isConsistent
+        success: false,
+        firestoreDeleted: false,
+        authDeleted: false,
+        message: `Error: ${error}`
       };
-    } catch (error) {
-      console.error('Error checking user consistency:', error);
-      throw error;
     }
   },
 
+
+
   /**
-   * Clean up orphaned users (users that exist in one system but not the other)
+   * Create an admin user programmatically
+   * WARNING: This should only be used for initial setup, remove in production
    */
-  async cleanupOrphanedUsers(): Promise<{
-    cleaned: number;
-    errors: string[];
-  }> {
+  async createAdminUser(email: string, password: string, name: string): Promise<boolean> {
     try {
-      const users = await this.getAllUsers();
-      const results = {
-        cleaned: 0,
-        errors: [] as string[]
-      };
+      // Create user in Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-      for (const user of users) {
-        try {
-          const consistency = await this.checkUserConsistency(user.email);
-          
-          if (!consistency.isConsistent) {
-            if (consistency.firestoreExists && !consistency.authExists) {
-              // User exists in Firestore but not in Auth - delete from Firestore
-              await deleteDoc(doc(db, 'users', user.uid));
-              results.cleaned++;
-              console.log(`Cleaned up orphaned Firestore user: ${user.email}`);
-            } else if (!consistency.firestoreExists && consistency.authExists) {
-              // User exists in Auth but not in Firestore - this is harder to handle
-              results.errors.push(`Orphaned Auth user found: ${user.email} - requires manual cleanup`);
-            }
-          }
-        } catch (error) {
-          results.errors.push(`Error processing user ${user.email}: ${error}`);
-        }
-      }
+      // Create user document in Firestore with admin role
+      await setDoc(doc(db, 'users', user.uid), {
+        name: name,
+        email: email,
+        role: 'admin',
+        createdAt: serverTimestamp()
+      });
 
-      return results;
+      console.log('Admin user created successfully:', user.uid);
+      return true;
     } catch (error) {
-      console.error('Error cleaning up orphaned users:', error);
-      throw error;
+      console.error('Error creating admin user:', error);
+      return false;
     }
   }
 }; 

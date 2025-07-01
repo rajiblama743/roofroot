@@ -9,8 +9,6 @@ const AdminHomePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'listings' | 'users'>('listings');
-  const [deleteEmail, setDeleteEmail] = useState('');
-  const [showDeleteInput, setShowDeleteInput] = useState(false);
 
   useEffect(() => {
     loadListings();
@@ -83,15 +81,16 @@ const AdminHomePage: React.FC = () => {
     );
   };
 
-  const handleDeleteUser = async () => {
-    if (!deleteEmail.trim()) {
-      Alert.alert('Error', 'Please enter an email address');
+  const handleDeleteUser = async (user: AdminUserData) => {
+    // Prevent deletion of admin users
+    if (user.role === 'admin') {
+      Alert.alert('Error', 'Admin users cannot be deleted');
       return;
     }
 
     Alert.alert(
       'Delete User',
-      `Are you sure you want to delete the user with email "${deleteEmail}"?\n\nThis will remove them from Firestore. Firebase Auth deletion requires backend implementation.`,
+      `Are you sure you want to delete "${user.name}" (${user.email})?\n\nThis will remove them from Firestore. Firebase Auth deletion requires backend implementation.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -99,14 +98,12 @@ const AdminHomePage: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const success = await adminService.deleteUserCompletely(deleteEmail);
-              if (success) {
-                Alert.alert('Success', 'User deleted from Firestore successfully');
-                setDeleteEmail('');
-                setShowDeleteInput(false);
+              const result = await adminService.deleteUserCompletely(user.email);
+              if (result.success) {
+                Alert.alert('Success', result.message);
                 loadUsers();
               } else {
-                Alert.alert('Error', 'User not found');
+                Alert.alert('Error', result.message);
               }
             } catch (error) {
               Alert.alert('Error', 'Failed to delete user');
@@ -116,33 +113,6 @@ const AdminHomePage: React.FC = () => {
       ]
     );
   };
-
-  const handleCleanupOrphanedUsers = async () => {
-    Alert.alert(
-      'Cleanup Orphaned Users',
-      'This will clean up users that exist in one system but not the other. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Cleanup',
-          onPress: async () => {
-            try {
-              const results = await adminService.cleanupOrphanedUsers();
-              Alert.alert(
-                'Cleanup Complete',
-                `Cleaned up ${results.cleaned} users.\n${results.errors.length > 0 ? `\nErrors: ${results.errors.join('\n')}` : ''}`
-              );
-              loadUsers();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to cleanup orphaned users');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-
 
   return (
     <View style={styles.container}>
@@ -181,33 +151,7 @@ const AdminHomePage: React.FC = () => {
         </View>
       )}
 
-      {activeTab === 'users' && (
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity style={styles.deleteUserButton} onPress={() => setShowDeleteInput(!showDeleteInput)}>
-            <Text style={styles.deleteUserButtonText}>🗑️ Delete User</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.cleanupButton} onPress={handleCleanupOrphanedUsers}>
-            <Text style={styles.cleanupButtonText}>🧹 Cleanup Orphaned Users</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
-      {activeTab === 'users' && showDeleteInput && (
-        <View style={styles.deleteInputContainer}>
-          <TextInput
-            style={styles.deleteInput}
-            placeholder="Enter email to delete"
-            value={deleteEmail}
-            onChangeText={setDeleteEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            placeholderTextColor="#94A3B8"
-          />
-          <TouchableOpacity style={styles.confirmDeleteButton} onPress={handleDeleteUser}>
-            <Text style={styles.confirmDeleteButtonText}>Delete</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
       <ScrollView style={styles.content}>
         {loading ? (
@@ -270,6 +214,14 @@ const AdminHomePage: React.FC = () => {
                   <Text style={styles.userCreated}>
                     Created: {user.createdAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
                   </Text>
+                  {user.role !== 'admin' && (
+                    <TouchableOpacity 
+                      style={styles.userDeleteButton} 
+                      onPress={() => handleDeleteUser(user)}
+                    >
+                      <Text style={styles.userDeleteButtonText}>🗑️ Delete</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ))}
             </View>
@@ -283,8 +235,6 @@ const AdminHomePage: React.FC = () => {
           )
         )}
       </ScrollView>
-
-
     </View>
   );
 };
@@ -372,58 +322,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  deleteUserButton: {
-    backgroundColor: '#EF4444',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  deleteUserButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  cleanupButton: {
-    backgroundColor: '#F59E0B',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cleanupButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  deleteInputContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-    gap: 8,
-  },
-  deleteInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    backgroundColor: 'white',
-    color: '#1E293B',
-  },
-  confirmDeleteButton: {
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmDeleteButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
+
   content: {
     flex: 1,
     padding: 20,
@@ -582,7 +481,18 @@ const styles = StyleSheet.create({
     color: '#64748B',
     textAlign: 'center',
   },
-
+  userDeleteButton: {
+    backgroundColor: '#EF4444',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  userDeleteButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
 });
 
 export default AdminHomePage; 
