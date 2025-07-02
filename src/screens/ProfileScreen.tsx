@@ -21,7 +21,7 @@ interface User {
 
 interface ProfileScreenProps {
   user: User;
-  onBack: () => void;
+  onBack?: () => void;
   onSignOut: () => void;
 }
 
@@ -98,15 +98,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onBack, onSignOut }
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile</Text>
-        <View style={styles.placeholder} />
-      </View>
-
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile Info */}
         <View style={styles.profileSection}>
@@ -116,10 +107,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onBack, onSignOut }
           
           <Text style={styles.userName}>{user.name}</Text>
           <Text style={styles.userEmail}>{user.email}</Text>
-          
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>{getRoleDisplayName(user.role)}</Text>
-          </View>
         </View>
 
         {/* Account Details */}
@@ -134,11 +121,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onBack, onSignOut }
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Email</Text>
             <Text style={styles.infoValue}>{user.email}</Text>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Role</Text>
-            <Text style={styles.infoValue}>{getRoleDisplayName(user.role)}</Text>
           </View>
           
           <View style={styles.infoRow}>
@@ -269,20 +251,33 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E2E8F0',
   },
   backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: 8,
   },
   backButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#6366F1',
     fontWeight: '600',
   },
-  headerTitle: {
-    fontSize: 18,
+  placeholder: {
+    width: 40,
+  },
+  pageTitleContainer: {
+    backgroundColor: 'white',
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  pageTitle: {
+    fontSize: 20,
     fontWeight: '700',
     color: '#1E293B',
-  },
-  placeholder: {
-    width: 60,
   },
   content: {
     flex: 1,
@@ -317,17 +312,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#64748B',
     marginBottom: 12,
-  },
-  roleBadge: {
-    backgroundColor: '#E0E7FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  roleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4338CA',
   },
   section: {
     backgroundColor: 'white',

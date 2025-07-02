@@ -52,9 +52,6 @@ const SideNav: React.FC<SideNavProps> = ({
                     <Text style={styles.profileHint}>Tap to view profile</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity style={styles.navButton} onPress={onProfile}>
-                  <Text style={styles.navButtonText}>👤 My Profile</Text>
-                </TouchableOpacity>
                 <TouchableOpacity style={[styles.navButton, styles.signOutButton]} onPress={onSignOut}>
                   <Text style={[styles.navButtonText, styles.signOutButtonText]}>Sign Out</Text>
                 </TouchableOpacity>
@@ -118,9 +115,10 @@ const styles = StyleSheet.create({
     color: '#1E293B',
   },
   slogan: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#64748B',
     fontWeight: 'normal',
+    opacity: 0.7,
   },
   closeButton: {
     width: 32,

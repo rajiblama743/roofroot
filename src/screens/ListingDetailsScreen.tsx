@@ -13,7 +13,7 @@ import { RealEstateListing } from '../firebase/realEstateService';
 
 interface ListingDetailsScreenProps {
   listing: RealEstateListing;
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 const { width } = Dimensions.get('window');
@@ -34,15 +34,6 @@ const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, on
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Property Details</Text>
-        <View style={styles.placeholder} />
-      </View>
-
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Image Section */}
         <View style={styles.imageContainer}>
@@ -143,20 +134,33 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E2E8F0',
   },
   backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: 8,
   },
   backButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#6366F1',
     fontWeight: '600',
   },
-  headerTitle: {
-    fontSize: 18,
+  placeholder: {
+    width: 40,
+  },
+  pageTitleContainer: {
+    backgroundColor: 'white',
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  pageTitle: {
+    fontSize: 20,
     fontWeight: '700',
     color: '#1E293B',
-  },
-  placeholder: {
-    width: 60,
   },
   content: {
     flex: 1,

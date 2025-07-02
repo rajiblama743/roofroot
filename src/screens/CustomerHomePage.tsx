@@ -53,12 +53,8 @@ const CustomerHomePage: React.FC<CustomerHomePageProps> = ({ onListingDetails })
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>RoofRoot</Text>
-        <Text style={styles.subtitle}>Find Your Dream Home</Text>
-        {isAuthenticated && userName && (
-          <Text style={styles.welcomeText}>Welcome, {userName}!</Text>
-        )}
+      <View style={styles.screenTitleContainer}>
+        <Text style={styles.screenTitle}>Available Properties ({listings.length})</Text>
       </View>
 
       <ScrollView style={styles.content}>
@@ -68,7 +64,6 @@ const CustomerHomePage: React.FC<CustomerHomePageProps> = ({ onListingDetails })
           </View>
         ) : listings.length > 0 ? (
           <View style={styles.listingsContainer}>
-            <Text style={styles.sectionTitle}>Available Properties ({listings.length})</Text>
             {listings.map((listing) => (
               <TouchableOpacity 
                 key={listing.id} 
@@ -107,32 +102,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  header: {
+  screenTitleContainer: {
     backgroundColor: 'white',
-    padding: 20,
-    paddingTop: 60,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+  screenTitle: {
+    fontSize: 20,
+    fontWeight: '700',
     color: '#1E293B',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#64748B',
-    marginBottom: 8,
-  },
-  welcomeText: {
-    fontSize: 14,
-    color: '#6366F1',
-    fontWeight: '600',
   },
   content: {
     flex: 1,
@@ -149,12 +129,6 @@ const styles = StyleSheet.create({
   },
   listingsContainer: {
     marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1E293B',
-    marginBottom: 16,
   },
   listingCard: {
     backgroundColor: 'white',

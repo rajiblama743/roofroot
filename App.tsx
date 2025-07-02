@@ -103,6 +103,63 @@ function App() {
     setCurrentScreen(userData?.role === 'admin' ? 'admin' : 'customer');
   };
 
+  const renderHeader = () => {
+    if (currentScreen === 'signup' || currentScreen === 'signin') {
+      return null; // Don't show header on auth screens
+    }
+
+    // Show back button only on profile and listingDetails screens
+    const showBackButton = currentScreen === 'profile' || currentScreen === 'listingDetails';
+
+    return (
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.menuButton} 
+          onPress={() => setSideNavVisible(true)}
+        >
+          <Text style={styles.menuButtonText}>☰</Text>
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>RoofRoot</Text>
+          {userData && (
+            <Text style={styles.userInfo}>
+              {userData.name}
+            </Text>
+          )}
+        </View>
+        {showBackButton ? (
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={currentScreen === 'profile' ? handleBackFromProfile : handleBackFromDetails}
+          >
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
+      </View>
+    );
+  };
+
+  // Render screen title just below the header for profile and listingDetails
+  const renderScreenTitle = () => {
+    if (currentScreen === 'profile') {
+      return (
+        <View style={styles.screenTitleContainer}>
+          <Text style={styles.screenTitle}>Profile</Text>
+        </View>
+      );
+    }
+    if (currentScreen === 'listingDetails') {
+      return (
+        <View style={styles.screenTitleContainer}>
+          <Text style={styles.screenTitle}>Listing Details</Text>
+        </View>
+      );
+    }
+    return null;
+  };
+
   const renderCurrentScreen = () => {
     switch (currentScreen) {
       case 'signup':
@@ -117,46 +174,20 @@ function App() {
         return selectedListing ? (
           <ListingDetailsScreen 
             listing={selectedListing} 
-            onBack={handleBackFromDetails} 
+            // Remove onBack, handled by header
           />
         ) : null;
       case 'profile':
         return userData ? (
           <ProfileScreen 
             user={userData} 
-            onBack={handleBackFromProfile} 
+            // Remove onBack, handled by header
             onSignOut={handleSignOut} 
           />
         ) : null;
       default:
         return <CustomerHomePage onListingDetails={handleListingDetails} />;
     }
-  };
-
-  const renderHeader = () => {
-    if (currentScreen === 'signup' || currentScreen === 'signin') {
-      return null; // Don't show header on auth screens
-    }
-
-    return (
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.menuButton} 
-          onPress={() => setSideNavVisible(true)}
-        >
-          <Text style={styles.menuButtonText}>☰</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>RoofRoot</Text>
-          {userData && (
-            <Text style={styles.userInfo}>
-              {userData.name}
-            </Text>
-          )}
-        </View>
-      </View>
-    );
   };
 
   if (loading) {
@@ -172,8 +203,8 @@ function App() {
     <View style={styles.appContainer}>
       <StatusBar barStyle="dark-content" />
       {renderHeader()}
+      {renderScreenTitle()}
       {renderCurrentScreen()}
-      
       <SideNav
         visible={sideNavVisible}
         onClose={() => setSideNavVisible(false)}
@@ -251,6 +282,32 @@ const styles = StyleSheet.create({
   userInfo: {
     fontSize: 12,
     color: '#64748B',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  backButtonText: {
+    fontSize: 18,
+    color: '#6366F1',
+    fontWeight: '600',
+  },
+  screenTitleContainer: {
+    backgroundColor: 'white',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  screenTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
   },
 });
 
