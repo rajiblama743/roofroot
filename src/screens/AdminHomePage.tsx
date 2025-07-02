@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Modal } from 'react-native';
 import { authService, realEstateService, RealEstateListing } from '../firebase';
 import { adminService, AdminUserData } from '../firebase/adminService';
 import ListingForm from '../components/ListingForm';
@@ -19,6 +19,9 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
   const [showListingForm, setShowListingForm] = useState(false);
   const [editingListing, setEditingListing] = useState<RealEstateListing | null>(null);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+
+  const [selectedUser, setSelectedUser] = useState<AdminUserData | null>(null);
+  const [showUserModal, setShowUserModal] = useState(false);
 
   useEffect(() => {
     loadListings();
@@ -192,6 +195,14 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
               <Text style={styles.sectionTitle}>Current Listings ({listings.length})</Text>
               {listings.map((listing) => (
                 <View key={listing.id} style={styles.listingCard}>
+                  {listing.images && listing.images.length > 0 ? (
+                    <Image source={{ uri: listing.images[0] }} style={styles.listingImage} />
+                  ) : (
+                    <View style={styles.placeholderImage}>
+                      <Text style={styles.placeholderText}>🖼️</Text>
+                      <Text style={styles.placeholderMessage}>Image coming soon</Text>
+                    </View>
+                  )}
                   <View style={styles.listingHeader}>
                     <Text style={styles.listingTitle}>{listing.title}</Text>
                     <Text style={styles.listingPrice}>${listing.price.toLocaleString()}</Text>
@@ -199,9 +210,6 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
                   <Text style={styles.listingDescription}>{listing.description}</Text>
                   {listing.location && (
                     <Text style={styles.listingLocation}>📍 {listing.location}</Text>
-                  )}
-                  {listing.imageUrl && (
-                    <Text style={styles.listingImageUrl}>🖼️ Image available</Text>
                   )}
                   <View style={styles.listingActions}>
                     <TouchableOpacity 
@@ -251,14 +259,22 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
                   <Text style={styles.userCreated}>
                     Created: {user.createdAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
                   </Text>
-                  {user.role !== 'admin' && (
+                  <View style={styles.userActionsRow}>
                     <TouchableOpacity 
-                      style={styles.userDeleteButton} 
-                      onPress={() => handleDeleteUser(user)}
+                      style={styles.userViewButton} 
+                      onPress={() => { setSelectedUser(user); setShowUserModal(true); }}
                     >
-                      <Text style={styles.userDeleteButtonText}>🗑️ Delete</Text>
+                      <Text style={styles.userViewButtonText}>View Details</Text>
                     </TouchableOpacity>
-                  )}
+                    {user.role !== 'admin' && (
+                      <TouchableOpacity 
+                        style={styles.userDeleteButton} 
+                        onPress={() => handleDeleteUser(user)}
+                      >
+                        <Text style={styles.userDeleteButtonText}>🗑️ Delete</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               ))}
             </View>
@@ -280,6 +296,49 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
         listing={editingListing}
         mode={formMode}
       />
+
+      <Modal
+        visible={showUserModal && !!selectedUser}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowUserModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.userModalContainer}>
+            <Text style={styles.userModalTitle}>User Details</Text>
+            {selectedUser && (
+              <>
+                <Text style={styles.userModalLabel}>Name:</Text>
+                <Text style={styles.userModalValue}>{selectedUser.name}</Text>
+                <Text style={styles.userModalLabel}>Email:</Text>
+                <Text style={styles.userModalValue}>{selectedUser.email}</Text>
+                <Text style={styles.userModalLabel}>Role:</Text>
+                <Text style={styles.userModalValue}>{selectedUser.role}</Text>
+                <Text style={styles.userModalLabel}>User ID:</Text>
+                <Text style={styles.userModalValue}>{selectedUser.uid}</Text>
+                <Text style={styles.userModalLabel}>Created At:</Text>
+                <Text style={styles.userModalValue}>{selectedUser.createdAt?.toDate?.()?.toLocaleString() || 'Unknown'}</Text>
+              </>
+            )}
+            <View style={styles.userModalActions}>
+              {selectedUser && selectedUser.role !== 'admin' && (
+                <TouchableOpacity 
+                  style={styles.userDeleteButton} 
+                  onPress={() => { handleDeleteUser(selectedUser); setShowUserModal(false); }}
+                >
+                  <Text style={styles.userDeleteButtonText}>🗑️ Delete</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity 
+                style={styles.userModalCloseButton} 
+                onPress={() => setShowUserModal(false)}
+              >
+                <Text style={styles.userModalCloseButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -480,10 +539,32 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginBottom: 12,
   },
-  listingImageUrl: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginBottom: 12,
+  listingImage: {
+    width: '100%',
+    height: 180,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    marginBottom: 8,
+  },
+  placeholderImage: {
+    width: '100%',
+    height: 180,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    marginBottom: 8,
+  },
+  placeholderText: {
+    fontSize: 48,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  placeholderMessage: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
   },
   listingActions: {
     flexDirection: 'row',
@@ -544,6 +625,69 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     textAlign: 'center',
+  },
+  userActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  userViewButton: {
+    backgroundColor: '#6366F1',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  userViewButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userModalContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    width: 320,
+    maxWidth: '90%',
+    alignItems: 'flex-start',
+  },
+  userModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 16,
+  },
+  userModalLabel: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  userModalValue: {
+    fontSize: 16,
+    color: '#1E293B',
+    fontWeight: '500',
+  },
+  userModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+  },
+  userModalCloseButton: {
+    backgroundColor: '#F1F5F9',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  userModalCloseButtonText: {
+    color: '#64748B',
+    fontWeight: '600',
+    fontSize: 14,
   },
   userDeleteButton: {
     backgroundColor: '#EF4444',

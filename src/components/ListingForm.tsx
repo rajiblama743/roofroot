@@ -7,9 +7,12 @@ import {
   TouchableOpacity, 
   Modal, 
   ScrollView, 
-  Alert 
+  Alert,
+  Image
 } from 'react-native';
 import { RealEstateListing } from '../firebase/realEstateService';
+import { launchImageLibrary, Asset as ImagePickerAsset } from 'react-native-image-picker';
+import storage from '@react-native-firebase/storage';
 
 interface ListingFormProps {
   visible: boolean;
@@ -30,54 +33,77 @@ const ListingForm: React.FC<ListingFormProps> = ({
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [location, setLocation] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (listing && mode === 'edit') {
       setTitle(listing.title || '');
       setDescription(listing.description || '');
-      setPrice(listing.price?.toString() || '');
+      setPrice(listing.price ? listing.price.toLocaleString() : '');
       setLocation(listing.location || '');
-      setImageUrl(listing.imageUrl || '');
+      setImages(listing.images || []);
     } else {
       // Reset form for create mode
       setTitle('');
       setDescription('');
       setPrice('');
       setLocation('');
-      setImageUrl('');
+      setImages([]);
     }
   }, [listing, mode, visible]);
+
+  const handlePickImages = async () => {
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      selectionLimit: 10,
+    });
+    if (result.assets) {
+      setImages([
+        ...images,
+        ...result.assets.map((asset: ImagePickerAsset) => asset.uri).filter(Boolean) as string[],
+      ]);
+    }
+  };
+
+  const uploadImages = async () => {
+    const uploadedUrls: string[] = [];
+    for (const uri of images) {
+      if (uri.startsWith('http')) {
+        uploadedUrls.push(uri);
+        continue;
+      }
+      const filename = uri.substring(uri.lastIndexOf('/') + 1);
+      const ref = storage().ref(`listing-images/${filename}`);
+      await ref.putFile(uri);
+      const url = await ref.getDownloadURL();
+      uploadedUrls.push(url);
+    }
+    return uploadedUrls;
+  };
 
   const handleSubmit = async () => {
     if (!title.trim() || !description.trim() || !price.trim()) {
       Alert.alert('Error', 'Please fill in all required fields (title, description, price)');
       return;
     }
-
-    const priceNumber = parseFloat(price);
+    const priceNumber = parseFloat(price.replace(/,/g, ''));
     if (isNaN(priceNumber) || priceNumber <= 0) {
       Alert.alert('Error', 'Please enter a valid price');
       return;
     }
-
     setLoading(true);
     try {
+      const imageUrls = await uploadImages();
       const listingData: any = {
         title: title.trim(),
         description: description.trim(),
         price: priceNumber,
+        images: imageUrls,
       };
-      
-      // Only add optional fields if they have values
       if (location.trim()) {
         listingData.location = location.trim();
       }
-      if (imageUrl.trim()) {
-        listingData.imageUrl = imageUrl.trim();
-      }
-      
       await onSubmit(listingData);
       onClose();
     } catch (error) {
@@ -141,7 +167,7 @@ const ListingForm: React.FC<ListingFormProps> = ({
               style={styles.input}
               value={price}
               onChangeText={setPrice}
-              placeholder="Enter price (e.g., 250000)"
+              placeholder="Enter price (e.g., 250,000)"
               placeholderTextColor="#94A3B8"
               keyboardType="numeric"
             />
@@ -159,15 +185,15 @@ const ListingForm: React.FC<ListingFormProps> = ({
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Image URL (Optional)</Text>
-            <TextInput
-              style={styles.input}
-              value={imageUrl}
-              onChangeText={setImageUrl}
-              placeholder="Enter image URL"
-              placeholderTextColor="#94A3B8"
-              autoCapitalize="none"
-            />
+            <Text style={styles.label}>Images (up to 10, optional)</Text>
+            <TouchableOpacity style={styles.imagePickerButton} onPress={handlePickImages}>
+              <Text style={styles.imagePickerButtonText}>Pick Images</Text>
+            </TouchableOpacity>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagePreviewRow}>
+              {images.map((uri, idx) => (
+                <Image key={idx} source={{ uri }} style={styles.imagePreview} />
+              ))}
+            </ScrollView>
           </View>
         </ScrollView>
 
@@ -287,6 +313,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  imagePickerButton: {
+    backgroundColor: '#6366F1',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  imagePickerButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+  imagePreviewRow: {
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  imagePreview: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginRight: 8,
   },
 });
 

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
 import { authService } from '../firebase';
+import { UserData } from '../firebase';
 
 interface SignInScreenProps {
   onSignInSuccess?: () => void;
   onBack?: () => void;
+  onLogin?: (userData: UserData) => void;
 }
 
-const SignInScreen: React.FC<SignInScreenProps> = ({ onSignInSuccess, onBack }) => {
+const SignInScreen: React.FC<SignInScreenProps> = ({ onSignInSuccess, onBack, onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,6 +42,15 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ onSignInSuccess, onBack }) 
     setLoading(true);
     try {
       await authService.signIn(email, password);
+      // Fetch user data from Firestore
+      const currentUser = authService.getCurrentUser();
+      if (currentUser) {
+        const userData = await authService.getUserData(currentUser.uid);
+        if (userData) {
+          onLogin?.(userData);
+          return;
+        }
+      }
       Alert.alert('Sign in successful!', 'Welcome back!');
       setEmail('');
       setPassword('');

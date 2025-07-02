@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { authService, realEstateService, RealEstateListing } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase/firebaseConfig';
@@ -71,14 +71,19 @@ const CustomerHomePage: React.FC<CustomerHomePageProps> = ({ onListingDetails })
                 onPress={() => onListingDetails(listing)}
                 activeOpacity={0.7}
               >
+                {listing.images && listing.images.length > 0 ? (
+                  <Image source={{ uri: listing.images[0] }} style={styles.listingImage} />
+                ) : (
+                  <View style={styles.placeholderImage}>
+                    <Text style={styles.placeholderText}>🖼️</Text>
+                    <Text style={styles.placeholderMessage}>Image coming soon</Text>
+                  </View>
+                )}
                 <Text style={styles.listingTitle}>{listing.title}</Text>
                 <Text style={styles.listingDescription}>{listing.description}</Text>
                 <Text style={styles.listingPrice}>${listing.price.toLocaleString()}</Text>
                 {listing.location && (
                   <Text style={styles.listingLocation}>📍 {listing.location}</Text>
-                )}
-                {listing.imageUrl && (
-                  <Text style={styles.listingImageUrl}>🖼️ View Photos</Text>
                 )}
                 <Text style={styles.tapHint}>Tap to view details</Text>
               </TouchableOpacity>
@@ -164,11 +169,6 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginBottom: 4,
   },
-  listingImageUrl: {
-    fontSize: 12,
-    color: '#6366F1',
-    fontWeight: '500',
-  },
   tapHint: {
     fontSize: 12,
     color: '#94A3B8',
@@ -188,6 +188,33 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   emptyText: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  listingImage: {
+    width: '100%',
+    height: 180,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    marginBottom: 8,
+  },
+  placeholderImage: {
+    width: '100%',
+    height: 180,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    marginBottom: 8,
+  },
+  placeholderText: {
+    fontSize: 48,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  placeholderMessage: {
     fontSize: 14,
     color: '#64748B',
     textAlign: 'center',

@@ -3,7 +3,7 @@
  * Real Estate Platform
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import SignUpScreen from './src/screens/SignUpScreen';
 import SignInScreen from './src/screens/SignInScreen';
@@ -13,15 +13,19 @@ import ListingDetailsScreen from './src/screens/ListingDetailsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SideNav from './src/components/SideNav';
 import { authService, UserData } from './src/firebase';
+import 'react-native-gesture-handler';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import AppHeader from './src/components/AppHeader';
 
-type ScreenType = 'customer' | 'admin' | 'signup' | 'signin' | 'listingDetails' | 'profile';
+const Stack = createStackNavigator();
 
 function App() {
-  const [currentScreen, setCurrentScreen] = useState<ScreenType>('customer');
-  const [sideNavVisible, setSideNavVisible] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sideNavVisible, setSideNavVisible] = useState(false);
   const [selectedListing, setSelectedListing] = useState<any>(null);
+  const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
   useEffect(() => {
     checkAuthState();
@@ -34,159 +38,25 @@ function App() {
         const userData = await authService.getUserData(currentUser.uid);
         if (userData) {
           setUserData(userData);
-          // Route based on user role
-          setCurrentScreen(userData.role === 'admin' ? 'admin' : 'customer');
-        } else {
-          setCurrentScreen('customer');
         }
       } else {
-        setCurrentScreen('customer');
+        setUserData(null);
       }
     } catch (error) {
       console.error('Error checking auth state:', error);
-      setCurrentScreen('customer');
+      setUserData(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSignInSuccess = async () => {
-    const currentUser = authService.getCurrentUser();
-    if (currentUser) {
-      const userData = await authService.getUserData(currentUser.uid);
-      if (userData) {
-        setUserData(userData);
-        setCurrentScreen(userData.role === 'admin' ? 'admin' : 'customer');
-      }
-    }
-  };
-
-  const handleSignUpSuccess = async () => {
-    const currentUser = authService.getCurrentUser();
-    if (currentUser) {
-      const userData = await authService.getUserData(currentUser.uid);
-      if (userData) {
-        setUserData(userData);
-        setCurrentScreen('customer'); // New users are always customers
-      }
-    }
-  };
-
-  const handleBackFromAuth = () => {
-    setCurrentScreen('customer');
-  };
-
-  const handleSignOut = async () => {
+  const handleSignOut = async (navigation: any) => {
     try {
       await authService.signOut();
       setUserData(null);
-      setCurrentScreen('customer');
+      navigation.reset({ index: 0, routes: [{ name: 'CustomerHome' }] });
     } catch (error) {
       console.error('Error signing out:', error);
-    }
-  };
-
-  const handleListingDetails = (listing: any) => {
-    setSelectedListing(listing);
-    setCurrentScreen('listingDetails');
-  };
-
-  const handleProfile = () => {
-    setCurrentScreen('profile');
-  };
-
-  const handleBackFromDetails = () => {
-    setCurrentScreen(userData?.role === 'admin' ? 'admin' : 'customer');
-  };
-
-  const handleBackFromProfile = () => {
-    setCurrentScreen(userData?.role === 'admin' ? 'admin' : 'customer');
-  };
-
-  const renderHeader = () => {
-    if (currentScreen === 'signup' || currentScreen === 'signin') {
-      return null; // Don't show header on auth screens
-    }
-
-    // Show back button only on profile and listingDetails screens
-    const showBackButton = currentScreen === 'profile' || currentScreen === 'listingDetails';
-
-    return (
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.menuButton} 
-          onPress={() => setSideNavVisible(true)}
-        >
-          <Text style={styles.menuButtonText}>☰</Text>
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>RoofRoot</Text>
-          {userData && (
-            <Text style={styles.userInfo}>
-              {userData.name}
-            </Text>
-          )}
-        </View>
-        {showBackButton ? (
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={currentScreen === 'profile' ? handleBackFromProfile : handleBackFromDetails}
-          >
-            <Text style={styles.backButtonText}>←</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 40 }} />
-        )}
-      </View>
-    );
-  };
-
-  // Render screen title just below the header for profile and listingDetails
-  const renderScreenTitle = () => {
-    if (currentScreen === 'profile') {
-      return (
-        <View style={styles.screenTitleContainer}>
-          <Text style={styles.screenTitle}>Profile</Text>
-        </View>
-      );
-    }
-    if (currentScreen === 'listingDetails') {
-      return (
-        <View style={styles.screenTitleContainer}>
-          <Text style={styles.screenTitle}>Listing Details</Text>
-        </View>
-      );
-    }
-    return null;
-  };
-
-  const renderCurrentScreen = () => {
-    switch (currentScreen) {
-      case 'signup':
-        return <SignUpScreen onSignUpSuccess={handleSignUpSuccess} onBack={handleBackFromAuth} />;
-      case 'signin':
-        return <SignInScreen onSignInSuccess={handleSignInSuccess} onBack={handleBackFromAuth} />;
-      case 'admin':
-        return <AdminHomePage onListingDetails={handleListingDetails} />;
-      case 'customer':
-        return <CustomerHomePage onListingDetails={handleListingDetails} />;
-      case 'listingDetails':
-        return selectedListing ? (
-          <ListingDetailsScreen 
-            listing={selectedListing} 
-            // Remove onBack, handled by header
-          />
-        ) : null;
-      case 'profile':
-        return userData ? (
-          <ProfileScreen 
-            user={userData} 
-            // Remove onBack, handled by header
-            onSignOut={handleSignOut} 
-          />
-        ) : null;
-      default:
-        return <CustomerHomePage onListingDetails={handleListingDetails} />;
     }
   };
 
@@ -200,31 +70,73 @@ function App() {
   }
 
   return (
-    <View style={styles.appContainer}>
-      <StatusBar barStyle="dark-content" />
-      {renderHeader()}
-      {renderScreenTitle()}
-      {renderCurrentScreen()}
+    <NavigationContainer ref={navigationRef}>
+      <AppHeader onMenuPress={() => setSideNavVisible(true)} userName={userData?.name} />
+      <Stack.Navigator
+        initialRouteName={userData?.role === 'admin' ? 'AdminHome' : 'CustomerHome'}
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen name="SignIn">
+          {props => <SignInScreen {...props} onLogin={userData => {
+            setUserData(userData);
+            if (userData.role === 'admin') {
+              navigationRef.current?.reset({ index: 0, routes: [{ name: 'AdminHome' as never }] });
+            } else {
+              navigationRef.current?.reset({ index: 0, routes: [{ name: 'CustomerHome' as never }] });
+            }
+          }} />}
+        </Stack.Screen>
+        <Stack.Screen name="SignUp">
+          {props => <SignUpScreen {...props} onSignUpSuccess={() => props.navigation.replace('CustomerHome')} />}
+        </Stack.Screen>
+        <Stack.Screen name="CustomerHome">
+          {props => <CustomerHomePage {...props} onListingDetails={listing => {
+            setSelectedListing(listing);
+            props.navigation.navigate('ListingDetails');
+          }} />}
+        </Stack.Screen>
+        <Stack.Screen name="AdminHome">
+          {props => <AdminHomePage {...props} onListingDetails={listing => {
+            setSelectedListing(listing);
+            props.navigation.navigate('ListingDetails');
+          }} />}
+        </Stack.Screen>
+        <Stack.Screen name="ListingDetails">
+          {props => <ListingDetailsScreen {...props} listing={selectedListing} />}
+        </Stack.Screen>
+        <Stack.Screen name="Profile">
+          {props => userData ? <ProfileScreen {...props} user={userData} onSignOut={() => handleSignOut(props.navigation)} /> : null}
+        </Stack.Screen>
+      </Stack.Navigator>
       <SideNav
         visible={sideNavVisible}
         onClose={() => setSideNavVisible(false)}
         onSignIn={() => {
           setSideNavVisible(false);
-          setCurrentScreen('signin');
+          navigationRef.current?.navigate('SignIn' as never);
         }}
         onSignUp={() => {
           setSideNavVisible(false);
-          setCurrentScreen('signup');
+          navigationRef.current?.navigate('SignUp' as never);
         }}
-        onSignOut={handleSignOut}
+        onSignOut={() => {
+          setSideNavVisible(false);
+          authService.signOut().then(() => {
+            setUserData(null);
+            navigationRef.current?.reset({ index: 0, routes: [{ name: 'CustomerHome' as never }] });
+          });
+        }}
         onProfile={() => {
           setSideNavVisible(false);
-          handleProfile();
+          navigationRef.current?.navigate('Profile' as never);
         }}
         isLoggedIn={!!userData}
         userName={userData?.name}
+        userRole={userData?.role}
       />
-    </View>
+    </NavigationContainer>
   );
 }
 

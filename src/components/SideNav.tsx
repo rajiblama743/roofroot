@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 interface SideNavProps {
   visible: boolean;
@@ -10,6 +11,7 @@ interface SideNavProps {
   onProfile: () => void;
   isLoggedIn: boolean;
   userName?: string;
+  userRole?: string;
 }
 
 const SideNav: React.FC<SideNavProps> = ({ 
@@ -20,8 +22,20 @@ const SideNav: React.FC<SideNavProps> = ({
   onSignOut, 
   onProfile,
   isLoggedIn, 
-  userName 
+  userName,
+  userRole
 }) => {
+  const navigation = useNavigation();
+
+  const handleHome = () => {
+    onClose();
+    if (userRole === 'admin') {
+      navigation.navigate('AdminHome' as never);
+    } else {
+      navigation.navigate('CustomerHome' as never);
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -41,11 +55,16 @@ const SideNav: React.FC<SideNavProps> = ({
             </TouchableOpacity>
           </View>
 
-          <View style={styles.content}>
+          <TouchableOpacity style={styles.navButton} onPress={handleHome}>
+            <Text style={styles.navButtonText}>🏠 Home</Text>
+          </TouchableOpacity>
+
+          <View style={{ flex: 1 }} />
+
+          <View style={styles.accountSection}>
+            <Text style={styles.sectionTitle}>Account</Text>
             {isLoggedIn ? (
-              // Logged in user - show user info and profile options
               <>
-                <Text style={styles.sectionTitle}>Account</Text>
                 {userName && (
                   <TouchableOpacity style={styles.userInfo} onPress={onProfile}>
                     <Text style={styles.userName}>{userName}</Text>
@@ -57,9 +76,7 @@ const SideNav: React.FC<SideNavProps> = ({
                 </TouchableOpacity>
               </>
             ) : (
-              // Not logged in - show sign in/sign up options
               <>
-                <Text style={styles.sectionTitle}>Account</Text>
                 <TouchableOpacity style={styles.navButton} onPress={onSignIn}>
                   <Text style={styles.navButtonText}>Sign In</Text>
                 </TouchableOpacity>
@@ -202,6 +219,12 @@ const styles = StyleSheet.create({
     color: '#64748B',
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  accountSection: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    backgroundColor: 'white',
   },
 });
 

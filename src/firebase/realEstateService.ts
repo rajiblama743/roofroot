@@ -7,7 +7,7 @@ export interface RealEstateListing {
   description: string;
   price: number;
   location?: string;
-  imageUrl?: string;
+  images?: string[];
   bedrooms?: number;
   bathrooms?: number;
   squareFeet?: number;
