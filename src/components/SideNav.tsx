@@ -46,6 +46,7 @@ const SideNav: React.FC<SideNavProps> = ({
       <View style={styles.overlay}>
         <View style={styles.sideNav}>
           <View style={styles.header}>
+            <View style={styles.spacer} />
             <View style={styles.titleContainer}>
               <Text style={styles.title}>RoofRoot</Text>
               <Text style={styles.slogan}>Find Your Dream Home</Text>
@@ -125,6 +126,7 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     flexDirection: 'column',
+    alignItems: 'center',
   },
   title: {
     fontSize: 24,
@@ -136,6 +138,8 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontWeight: 'normal',
     opacity: 0.7,
+    textAlign: 'center',
+    marginTop: 4,
   },
   closeButton: {
     width: 32,
@@ -225,6 +229,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     backgroundColor: 'white',
+  },
+  spacer: {
+    width: 32,
   },
 });
 

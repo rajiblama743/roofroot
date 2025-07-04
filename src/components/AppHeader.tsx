@@ -13,11 +13,9 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onMenuPress, userName }) => (
     </TouchableOpacity>
     <View style={styles.headerContent}>
       <Text style={styles.headerTitle}>RoofRoot</Text>
-      {userName && (
-        <Text style={styles.userName}>{userName}</Text>
-      )}
+      <Text style={styles.slogan}>Find Your Dream Home</Text>
     </View>
-    <View style={{ width: 40 }} />
+    <View style={styles.spacer} />
   </View>
 );
 
@@ -51,6 +49,7 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 20,
@@ -64,6 +63,17 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     marginTop: 0,
     fontWeight: '500',
+  },
+  slogan: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: 'normal',
+    opacity: 0.7,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  spacer: {
+    width: 40,
   },
 });
 

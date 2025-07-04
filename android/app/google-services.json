@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "730348664478",
+    "project_id": "roofroot-2bdfb",
+    "storage_bucket": "roofroot-2bdfb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:730348664478:android:YOUR_APP_ID_HERE",
+        "android_client_info": {
+          "package_name": "com.roofroot"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "730348664478-YOUR_CLIENT_ID.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtKPfu8cUTxLGY3LLAcq0M2ob5KRAMd7w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "730348664478-YOUR_CLIENT_ID.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+} 

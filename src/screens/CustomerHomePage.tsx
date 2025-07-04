@@ -107,6 +107,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
+  brandContainer: {
+    backgroundColor: 'white',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingTop: 60,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  brandTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1E293B',
+    textAlign: 'center',
+  },
+  brandSlogan: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: 'normal',
+    opacity: 0.7,
+    textAlign: 'center',
+    marginTop: 4,
+  },
   screenTitleContainer: {
     backgroundColor: 'white',
     alignItems: 'center',

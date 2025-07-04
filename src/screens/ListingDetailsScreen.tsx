@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   Image,
   Alert,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { RealEstateListing } from '../firebase/realEstateService';
 import { realEstateService } from '../firebase/realEstateService';
+import { authService } from '../firebase/authService';
 
 interface ListingDetailsScreenProps {
   listing: RealEstateListing;
@@ -21,6 +23,26 @@ interface ListingDetailsScreenProps {
 const { width } = Dimensions.get('window');
 
 const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, onBack, onImageRemoved }) => {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isImageModalVisible, setIsImageModalVisible] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Get current user on component mount
+  React.useEffect(() => {
+    const getUser = async () => {
+      try {
+        const user = authService.getCurrentUser();
+        if (user) {
+          const userData = await authService.getUserData(user.uid);
+          setCurrentUser(userData);
+        }
+      } catch (error) {
+        console.error('Error getting current user:', error);
+      }
+    };
+    getUser();
+  }, []);
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -59,6 +81,18 @@ const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, on
     );
   };
 
+  const handleImagePress = (imageUrl: string) => {
+    setSelectedImage(imageUrl);
+    setIsImageModalVisible(true);
+  };
+
+  const closeImageModal = () => {
+    setIsImageModalVisible(false);
+    setSelectedImage(null);
+  };
+
+  const isAdmin = currentUser?.role === 'admin';
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -69,13 +103,20 @@ const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, on
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
               {listing.images.map((imageUrl, index) => (
                 <View key={index} style={styles.galleryImageContainer}>
-                  <Image source={{ uri: imageUrl }} style={styles.galleryImage} />
                   <TouchableOpacity 
-                    style={styles.removeImageButton} 
-                    onPress={() => handleRemoveImage(imageUrl)}
+                    onPress={() => handleImagePress(imageUrl)}
+                    activeOpacity={0.8}
                   >
-                    <Text style={styles.removeImageButtonText}>✕</Text>
+                    <Image source={{ uri: imageUrl }} style={styles.galleryImage} />
                   </TouchableOpacity>
+                  {isAdmin && (
+                    <TouchableOpacity 
+                      style={styles.removeImageButton} 
+                      onPress={() => handleRemoveImage(imageUrl)}
+                    >
+                      <Text style={styles.removeImageButtonText}>✕</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ))}
             </ScrollView>
@@ -151,6 +192,30 @@ const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, on
           )}
         </View>
       </ScrollView>
+
+      {/* Fullscreen Image Modal */}
+      <Modal
+        visible={isImageModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeImageModal}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalCloseButton} 
+            onPress={closeImageModal}
+          >
+            <Text style={styles.modalCloseButtonText}>✕</Text>
+          </TouchableOpacity>
+          {selectedImage && (
+            <Image 
+              source={{ uri: selectedImage }} 
+              style={styles.fullscreenImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -319,6 +384,33 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  fullscreenImage: {
+    width: '100%',
+    height: '100%',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  modalCloseButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6366F1',
   },
 });
 

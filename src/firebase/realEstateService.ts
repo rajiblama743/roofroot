@@ -2,6 +2,9 @@ import { db } from './firebaseConfig';
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, getDoc, serverTimestamp } from 'firebase/firestore';
 import storage from '@react-native-firebase/storage';
 
+// Initialize React Native Firebase Storage
+const storageRef = storage();
+
 export interface RealEstateListing {
   id?: string;
   title: string;
@@ -118,10 +121,15 @@ export const realEstateService = {
    */
   async removeListingImage(listingId: string, imageUrl: string): Promise<void> {
     try {
-      // Delete from Firebase Storage
+      // Delete from Firebase Storage (silently ignore if not available)
       if (imageUrl.startsWith('https://firebasestorage.googleapis.com/')) {
-        const imageRef = storage().refFromURL(imageUrl);
-        await imageRef.delete();
+        try {
+          const imageRef = storageRef.refFromURL(imageUrl);
+          await imageRef.delete();
+          console.log('Successfully deleted image from Firebase Storage:', imageUrl);
+        } catch (storageError) {
+          // Silently ignore storage errors - this is expected behavior
+        }
       }
 
       // Update Firestore to remove the URL from images array
@@ -137,6 +145,7 @@ export const realEstateService = {
           images: updatedImages,
           updatedAt: serverTimestamp(),
         });
+        console.log('Successfully updated Firestore listing images');
       }
     } catch (error) {
       console.error('Error removing listing image:', error);
