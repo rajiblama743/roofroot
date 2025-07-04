@@ -10,15 +10,17 @@ import {
   Dimensions,
 } from 'react-native';
 import { RealEstateListing } from '../firebase/realEstateService';
+import { realEstateService } from '../firebase/realEstateService';
 
 interface ListingDetailsScreenProps {
   listing: RealEstateListing;
   onBack?: () => void;
+  onImageRemoved?: () => void;
 }
 
 const { width } = Dimensions.get('window');
 
-const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, onBack }) => {
+const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, onBack, onImageRemoved }) => {
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -32,25 +34,60 @@ const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, on
     Alert.alert('Image Error', 'Failed to load the image. Please check the URL.');
   };
 
+  const handleRemoveImage = async (imageUrl: string) => {
+    if (!listing.id) return;
+    
+    Alert.alert(
+      'Remove Image',
+      'Are you sure you want to remove this image?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await realEstateService.removeListingImage(listing.id!, imageUrl);
+              Alert.alert('Success', 'Image removed successfully');
+              onImageRemoved?.();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to remove image');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Image Section */}
-        <View style={styles.imageContainer}>
-          {listing.imageUrl ? (
-            <Image
-              source={{ uri: listing.imageUrl }}
-              style={styles.image}
-              resizeMode="cover"
-              onError={handleImageError}
-            />
-          ) : (
+        {/* Image Gallery */}
+        {listing.images && listing.images.length > 0 ? (
+          <View style={styles.imageGallery}>
+            <Text style={styles.galleryTitle}>Property Images ({listing.images.length})</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
+              {listing.images.map((imageUrl, index) => (
+                <View key={index} style={styles.galleryImageContainer}>
+                  <Image source={{ uri: imageUrl }} style={styles.galleryImage} />
+                  <TouchableOpacity 
+                    style={styles.removeImageButton} 
+                    onPress={() => handleRemoveImage(imageUrl)}
+                  >
+                    <Text style={styles.removeImageButtonText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        ) : (
+          <View style={styles.imageContainer}>
             <View style={styles.placeholderImage}>
               <Text style={styles.placeholderText}>🖼️</Text>
               <Text style={styles.placeholderMessage}>Image coming soon</Text>
             </View>
-          )}
-        </View>
+          </View>
+        )}
 
         {/* Content Section */}
         <View style={styles.detailsContainer}>
@@ -243,6 +280,45 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: '#475569',
+  },
+  imageGallery: {
+    backgroundColor: 'white',
+    padding: 20,
+    marginBottom: 16,
+  },
+  galleryTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 12,
+  },
+  imageScroll: {
+    marginBottom: 8,
+  },
+  galleryImageContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  galleryImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 8,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeImageButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
 

@@ -1,5 +1,6 @@
 import { db } from './firebaseConfig';
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, getDoc, serverTimestamp } from 'firebase/firestore';
+import storage from '@react-native-firebase/storage';
 
 export interface RealEstateListing {
   id?: string;
@@ -108,6 +109,37 @@ export const realEstateService = {
       await deleteDoc(docRef);
     } catch (error) {
       console.error('Error deleting listing:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Remove a specific image from a listing
+   */
+  async removeListingImage(listingId: string, imageUrl: string): Promise<void> {
+    try {
+      // Delete from Firebase Storage
+      if (imageUrl.startsWith('https://firebasestorage.googleapis.com/')) {
+        const imageRef = storage().refFromURL(imageUrl);
+        await imageRef.delete();
+      }
+
+      // Update Firestore to remove the URL from images array
+      const docRef = doc(db, 'listing', listingId);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        const currentData = docSnap.data();
+        const currentImages = currentData.images || [];
+        const updatedImages = currentImages.filter((url: string) => url !== imageUrl);
+        
+        await updateDoc(docRef, {
+          images: updatedImages,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } catch (error) {
+      console.error('Error removing listing image:', error);
       throw error;
     }
   }

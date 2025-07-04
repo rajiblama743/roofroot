@@ -194,7 +194,12 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
             <View style={styles.listingsContainer}>
               <Text style={styles.sectionTitle}>Current Listings ({listings.length})</Text>
               {listings.map((listing) => (
-                <View key={listing.id} style={styles.listingCard}>
+                <TouchableOpacity 
+                  key={listing.id} 
+                  style={styles.listingCard}
+                  onPress={() => onListingDetails(listing)}
+                  activeOpacity={0.7}
+                >
                   {listing.images && listing.images.length > 0 ? (
                     <Image source={{ uri: listing.images[0] }} style={styles.listingImage} />
                   ) : (
@@ -213,25 +218,19 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
                   )}
                   <View style={styles.listingActions}>
                     <TouchableOpacity 
-                      style={styles.viewButton} 
-                      onPress={() => onListingDetails(listing)}
-                    >
-                      <Text style={styles.viewButtonText}>View</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
                       style={styles.editButton} 
-                      onPress={() => handleEditListing(listing)}
+                      onPress={(e) => { e.stopPropagation(); handleEditListing(listing); }}
                     >
                       <Text style={styles.editButtonText}>Edit</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={styles.deleteButton} 
-                      onPress={() => handleDeleteListing(listing)}
+                      onPress={(e) => { e.stopPropagation(); handleDeleteListing(listing); }}
                     >
                       <Text style={styles.deleteButtonText}>Delete</Text>
                     </TouchableOpacity>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           ) : (
@@ -248,7 +247,12 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
             <View style={styles.usersContainer}>
               <Text style={styles.sectionTitle}>Registered Users ({users.length})</Text>
               {users.map((user) => (
-                <View key={user.uid} style={styles.userCard}>
+                <TouchableOpacity 
+                  key={user.uid} 
+                  style={styles.userCard}
+                  onPress={() => { setSelectedUser(user); setShowUserModal(true); }}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.userHeader}>
                     <Text style={styles.userName}>{user.name}</Text>
                     <Text style={[styles.userRole, user.role === 'admin' && styles.adminRole]}>
@@ -259,23 +263,15 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
                   <Text style={styles.userCreated}>
                     Created: {user.createdAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
                   </Text>
-                  <View style={styles.userActionsRow}>
+                  {user.role !== 'admin' && (
                     <TouchableOpacity 
-                      style={styles.userViewButton} 
-                      onPress={() => { setSelectedUser(user); setShowUserModal(true); }}
+                      style={styles.userDeleteButton} 
+                      onPress={(e) => { e.stopPropagation(); handleDeleteUser(user); }}
                     >
-                      <Text style={styles.userViewButtonText}>View Details</Text>
+                      <Text style={styles.userDeleteButtonText}>🗑️ Delete</Text>
                     </TouchableOpacity>
-                    {user.role !== 'admin' && (
-                      <TouchableOpacity 
-                        style={styles.userDeleteButton} 
-                        onPress={() => handleDeleteUser(user)}
-                      >
-                        <Text style={styles.userDeleteButtonText}>🗑️ Delete</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
+                  )}
+                </TouchableOpacity>
               ))}
             </View>
           ) : (
@@ -321,17 +317,10 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
               </>
             )}
             <View style={styles.userModalActions}>
-              {selectedUser && selectedUser.role !== 'admin' && (
-                <TouchableOpacity 
-                  style={styles.userDeleteButton} 
-                  onPress={() => { handleDeleteUser(selectedUser); setShowUserModal(false); }}
-                >
-                  <Text style={styles.userDeleteButtonText}>🗑️ Delete</Text>
-                </TouchableOpacity>
-              )}
               <TouchableOpacity 
-                style={styles.userModalCloseButton} 
+                style={[styles.userModalCloseButton, styles.userModalCloseButtonFullWidth]} 
                 onPress={() => setShowUserModal(false)}
+                activeOpacity={0.7}
               >
                 <Text style={styles.userModalCloseButtonText}>Close</Text>
               </TouchableOpacity>
@@ -679,10 +668,17 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   userModalCloseButton: {
-    backgroundColor: '#F1F5F9',
-    padding: 10,
+    backgroundColor: 'rgba(209, 213, 219, 0.7)',
+    padding: 12,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  userModalCloseButtonFullWidth: {
+    flex: 1,
   },
   userModalCloseButtonText: {
     color: '#64748B',

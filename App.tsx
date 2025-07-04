@@ -104,7 +104,13 @@ function App() {
           }} />}
         </Stack.Screen>
         <Stack.Screen name="ListingDetails">
-          {props => <ListingDetailsScreen {...props} listing={selectedListing} />}
+          {props => <ListingDetailsScreen {...props} listing={selectedListing} onImageRemoved={() => {
+            // Refresh the listing data when an image is removed
+            if (selectedListing) {
+              // This will trigger a re-render with updated listing data
+              setSelectedListing({ ...selectedListing });
+            }
+          }} />}
         </Stack.Screen>
         <Stack.Screen name="Profile">
           {props => userData ? <ProfileScreen {...props} user={userData} onSignOut={() => handleSignOut(props.navigation)} /> : null}

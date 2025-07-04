@@ -67,19 +67,35 @@ const ListingForm: React.FC<ListingFormProps> = ({
   };
 
   const uploadImages = async () => {
-    const uploadedUrls: string[] = [];
-    for (const uri of images) {
+    const uploadPromises = images.map(async (uri) => {
       if (uri.startsWith('http')) {
-        uploadedUrls.push(uri);
-        continue;
+        return uri; // Already uploaded
       }
-      const filename = uri.substring(uri.lastIndexOf('/') + 1);
-      const ref = storage().ref(`listing-images/${filename}`);
-      await ref.putFile(uri);
-      const url = await ref.getDownloadURL();
-      uploadedUrls.push(url);
+      try {
+        const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+        const ref = storage().ref(`listing-images/${filename}`);
+        await ref.putFile(uri);
+        const url = await ref.getDownloadURL();
+        return url;
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        throw new Error(`Failed to upload image: ${error}`);
+      }
+    });
+    
+    try {
+      const uploadedUrls = await Promise.all(uploadPromises);
+      return uploadedUrls.filter(Boolean);
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      throw error;
     }
-    return uploadedUrls;
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = [...images];
+    newImages.splice(index, 1);
+    setImages(newImages);
   };
 
   const handleSubmit = async () => {
@@ -107,7 +123,8 @@ const ListingForm: React.FC<ListingFormProps> = ({
       await onSubmit(listingData);
       onClose();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save listing');
+      console.error('Error saving listing:', error);
+      Alert.alert('Error', `Failed to save listing: ${error}`);
     } finally {
       setLoading(false);
     }
@@ -191,7 +208,15 @@ const ListingForm: React.FC<ListingFormProps> = ({
             </TouchableOpacity>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagePreviewRow}>
               {images.map((uri, idx) => (
-                <Image key={idx} source={{ uri }} style={styles.imagePreview} />
+                <View key={idx} style={styles.imagePreviewContainer}>
+                  <Image source={{ uri }} style={styles.imagePreview} />
+                  <TouchableOpacity 
+                    style={styles.removeImageButton} 
+                    onPress={() => removeImage(idx)}
+                  >
+                    <Text style={styles.removeImageButtonText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
               ))}
             </ScrollView>
           </View>
@@ -329,11 +354,30 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 20,
   },
+  imagePreviewContainer: {
+    position: 'relative',
+    marginRight: 8,
+  },
   imagePreview: {
     width: 100,
     height: 100,
     borderRadius: 8,
-    marginRight: 8,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeImageButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 
