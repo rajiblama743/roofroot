@@ -1,8 +1,6 @@
-import { db } from './firebaseConfig';
-import { collection, query, where, getDocs, deleteDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
 import { authService } from './authService';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from './firebaseConfig';
 
 export interface AdminUserData {
   uid: string;
@@ -18,7 +16,7 @@ export const adminService = {
    */
   async getAllUsers(): Promise<AdminUserData[]> {
     try {
-      const usersSnapshot = await getDocs(collection(db, 'users'));
+      const usersSnapshot = await firestore().collection('users').get();
       const users: AdminUserData[] = [];
       
       usersSnapshot.forEach((doc) => {
@@ -40,9 +38,7 @@ export const adminService = {
    */
   async getUserByEmail(email: string): Promise<AdminUserData | null> {
     try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', email));
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await firestore().collection('users').where('email', '==', email).get();
       
       if (!querySnapshot.empty) {
         const doc = querySnapshot.docs[0];
@@ -93,7 +89,7 @@ export const adminService = {
 
       // Delete from Firestore
       try {
-        await deleteDoc(doc(db, 'users', userData.uid));
+        await firestore().collection('users').doc(userData.uid).delete();
         firestoreDeleted = true;
         message += 'User deleted from Firestore. ';
       } catch (error) {
@@ -130,8 +126,6 @@ export const adminService = {
     }
   },
 
-
-
   /**
    * Create an admin user programmatically
    * WARNING: This should only be used for initial setup, remove in production
@@ -139,15 +133,15 @@ export const adminService = {
   async createAdminUser(email: string, password: string, name: string): Promise<boolean> {
     try {
       // Create user in Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await auth().createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
 
       // Create user document in Firestore with admin role
-      await setDoc(doc(db, 'users', user.uid), {
+      await firestore().collection('users').doc(user.uid).set({
         name: name,
         email: email,
         role: 'admin',
-        createdAt: serverTimestamp()
+        createdAt: firestore.FieldValue.serverTimestamp()
       });
 
       console.log('Admin user created successfully:', user.uid);

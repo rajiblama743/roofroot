@@ -1,18 +1,5 @@
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  UserCredential,
-  User,
-  deleteUser,
-  fetchSignInMethodsForEmail,
-  signInWithCredential,
-  EmailAuthProvider,
-  reauthenticateWithCredential,
-  updatePassword
-} from 'firebase/auth';
-import { auth, db } from './firebaseConfig';
-import { setDoc, doc, serverTimestamp, getDoc, deleteDoc } from 'firebase/firestore';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 
 export interface AuthError {
   code: string;
@@ -33,7 +20,7 @@ export const authService = {
    */
   async checkEmailExists(email: string): Promise<boolean> {
     try {
-      const methods = await fetchSignInMethodsForEmail(auth, email);
+      const methods = await auth().fetchSignInMethodsForEmail(email);
       return methods.length > 0;
     } catch (error) {
       console.error('Error checking email existence:', error);
@@ -47,12 +34,12 @@ export const authService = {
   async deleteUser(userId: string): Promise<void> {
     try {
       // First, delete from Firestore
-      await deleteDoc(doc(db, 'users', userId));
+      await firestore().collection('users').doc(userId).delete();
       
       // Then, delete from Firebase Authentication
-      const currentUser = auth.currentUser;
+      const currentUser = auth().currentUser;
       if (currentUser && currentUser.uid === userId) {
-        await deleteUser(currentUser);
+        await currentUser.delete();
       } else {
         // If trying to delete a different user, we need admin privileges
         // For now, we'll just delete from Firestore
@@ -70,7 +57,7 @@ export const authService = {
    */
   async isOrphanedAuthUser(email: string): Promise<boolean> {
     try {
-      const methods = await fetchSignInMethodsForEmail(auth, email);
+      const methods = await auth().fetchSignInMethodsForEmail(email);
       if (methods.length === 0) {
         return false; // No auth user exists
       }
@@ -90,7 +77,7 @@ export const authService = {
    * Also saves user info to Firestore with role "customer"
    * Handles cases where user exists in Auth but not in Firestore
    */
-  async signUpWithDetails(name: string, email: string, password: string): Promise<UserCredential> {
+  async signUpWithDetails(name: string, email: string, password: string): Promise<any> {
     try {
       // Check if email exists in Firebase Auth
       const emailExists = await this.checkEmailExists(email);
@@ -106,14 +93,14 @@ export const authService = {
       }
 
       // Email doesn't exist in Auth, proceed with normal signup
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await auth().createUserWithEmailAndPassword(email, password);
       const { user } = userCredential;
       
-      await setDoc(doc(db, 'users', user.uid), {
+      await firestore().collection('users').doc(user.uid).set({
         name,
         email,
         role: 'customer',
-        createdAt: serverTimestamp(),
+        createdAt: firestore.FieldValue.serverTimestamp(),
       });
       
       return userCredential;
@@ -125,9 +112,9 @@ export const authService = {
   /**
    * Sign in an existing user with email and password
    */
-  async signIn(email: string, password: string): Promise<UserCredential> {
+  async signIn(email: string, password: string): Promise<any> {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await auth().signInWithEmailAndPassword(email, password);
       return userCredential;
     } catch (error) {
       throw error as AuthError;
@@ -139,7 +126,7 @@ export const authService = {
    */
   async getUserData(userId: string): Promise<UserData | null> {
     try {
-      const userDoc = await getDoc(doc(db, 'users', userId));
+      const userDoc = await firestore().collection('users').doc(userId).get();
       if (userDoc.exists()) {
         return {
           uid: userId,
@@ -158,7 +145,7 @@ export const authService = {
    */
   async signOut(): Promise<void> {
     try {
-      await signOut(auth);
+      await auth().signOut();
     } catch (error) {
       throw error as AuthError;
     }
@@ -167,15 +154,15 @@ export const authService = {
   /**
    * Get the current user
    */
-  getCurrentUser(): User | null {
-    return auth.currentUser;
+  getCurrentUser(): any {
+    return auth().currentUser;
   },
 
   /**
    * Listen to authentication state changes
    */
-  onAuthStateChanged(callback: (user: User | null) => void) {
-    return auth.onAuthStateChanged(callback);
+  onAuthStateChanged(callback: (user: any) => void) {
+    return auth().onAuthStateChanged(callback);
   },
 
   /**
@@ -183,7 +170,7 @@ export const authService = {
    */
   async updatePassword(newPassword: string): Promise<void> {
     try {
-      const currentUser = auth.currentUser;
+      const currentUser = auth().currentUser;
       if (!currentUser) {
         throw {
           code: 'auth/no-user',
@@ -191,7 +178,7 @@ export const authService = {
         } as AuthError;
       }
 
-      await updatePassword(currentUser, newPassword);
+      await currentUser.updatePassword(newPassword);
     } catch (error) {
       console.error('Error updating password:', error);
       throw error as AuthError;
@@ -199,11 +186,11 @@ export const authService = {
   },
 
   /**
-   * Delete the current user's account from both Auth and Firestore
+   * Delete the current user's account
    */
   async deleteUserAccount(): Promise<void> {
     try {
-      const currentUser = auth.currentUser;
+      const currentUser = auth().currentUser;
       if (!currentUser) {
         throw {
           code: 'auth/no-user',
@@ -211,11 +198,11 @@ export const authService = {
         } as AuthError;
       }
 
-      // First, delete from Firestore
-      await deleteDoc(doc(db, 'users', currentUser.uid));
+      // First delete from Firestore
+      await firestore().collection('users').doc(currentUser.uid).delete();
       
-      // Then, delete from Firebase Authentication
-      await deleteUser(currentUser);
+      // Then delete the Firebase Auth user
+      await currentUser.delete();
     } catch (error) {
       console.error('Error deleting user account:', error);
       throw error as AuthError;

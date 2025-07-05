@@ -1,5 +1,4 @@
-import { db } from './firebaseConfig';
-import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, getDoc, serverTimestamp } from 'firebase/firestore';
+import firestore from '@react-native-firebase/firestore';
 import storage from '@react-native-firebase/storage';
 
 // Initialize React Native Firebase Storage
@@ -30,10 +29,10 @@ export const realEstateService = {
         Object.entries(listing).filter(([_, value]) => value !== undefined)
       );
       
-      const docRef = await addDoc(collection(db, 'listing'), {
+      const docRef = await firestore().collection('listing').add({
         ...cleanListing,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        createdAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: firestore.FieldValue.serverTimestamp(),
       });
       return docRef.id;
     } catch (error) {
@@ -47,7 +46,7 @@ export const realEstateService = {
    */
   async getAllListings(): Promise<RealEstateListing[]> {
     try {
-      const querySnapshot = await getDocs(collection(db, 'listing'));
+      const querySnapshot = await firestore().collection('listing').get();
       const listings: RealEstateListing[] = [];
       querySnapshot.forEach((doc) => {
         listings.push({
@@ -67,8 +66,7 @@ export const realEstateService = {
    */
   async getListingById(id: string): Promise<RealEstateListing | null> {
     try {
-      const docRef = doc(db, 'listing', id);
-      const docSnap = await getDoc(docRef);
+      const docSnap = await firestore().collection('listing').doc(id).get();
       if (docSnap.exists()) {
         return {
           id: docSnap.id,
@@ -92,10 +90,9 @@ export const realEstateService = {
         Object.entries(updates).filter(([_, value]) => value !== undefined)
       );
       
-      const docRef = doc(db, 'listing', id);
-      await updateDoc(docRef, {
+      await firestore().collection('listing').doc(id).update({
         ...cleanUpdates,
-        updatedAt: serverTimestamp(),
+        updatedAt: firestore.FieldValue.serverTimestamp(),
       });
     } catch (error) {
       console.error('Error updating listing:', error);
@@ -108,8 +105,7 @@ export const realEstateService = {
    */
   async deleteListing(id: string): Promise<void> {
     try {
-      const docRef = doc(db, 'listing', id);
-      await deleteDoc(docRef);
+      await firestore().collection('listing').doc(id).delete();
     } catch (error) {
       console.error('Error deleting listing:', error);
       throw error;
@@ -133,17 +129,16 @@ export const realEstateService = {
       }
 
       // Update Firestore to remove the URL from images array
-      const docRef = doc(db, 'listing', listingId);
-      const docSnap = await getDoc(docRef);
+      const docSnap = await firestore().collection('listing').doc(listingId).get();
       
       if (docSnap.exists()) {
         const currentData = docSnap.data();
-        const currentImages = currentData.images || [];
+        const currentImages = currentData?.images || [];
         const updatedImages = currentImages.filter((url: string) => url !== imageUrl);
         
-        await updateDoc(docRef, {
+        await firestore().collection('listing').doc(listingId).update({
           images: updatedImages,
-          updatedAt: serverTimestamp(),
+          updatedAt: firestore.FieldValue.serverTimestamp(),
         });
         console.log('Successfully updated Firestore listing images');
       }

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { authService, realEstateService, RealEstateListing } from '../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../firebase/firebaseConfig';
+import auth from '@react-native-firebase/auth';
 
 interface CustomerHomePageProps {
   onListingDetails: (listing: RealEstateListing) => void;
@@ -20,7 +19,7 @@ const CustomerHomePage: React.FC<CustomerHomePageProps> = ({ onListingDetails })
   }, []);
 
   const setupAuthListener = () => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = auth().onAuthStateChanged(async (user) => {
       if (user) {
         // User is signed in
         setIsAuthenticated(true);
