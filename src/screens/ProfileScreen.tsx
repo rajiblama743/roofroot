@@ -133,21 +133,23 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onBack, onSignOut }
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account Actions</Text>
           
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => setShowPasswordModal(true)}
-            disabled={loading}
-          >
-            <Text style={styles.actionButtonText}>🔐 Change Password</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.deleteButton]}
-            onPress={handleDeleteAccount}
-            disabled={loading}
-          >
-            <Text style={styles.deleteButtonText}>🗑️ Delete Account</Text>
-          </TouchableOpacity>
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => setShowPasswordModal(true)}
+              disabled={loading}
+            >
+              <Text style={styles.actionButtonText}>🔐 Change Password</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.deleteButton]}
+              onPress={handleDeleteAccount}
+              disabled={loading}
+            >
+              <Text style={styles.deleteButtonText}>🗑️ Delete Account</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Sign Out */}
@@ -345,24 +347,34 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 16,
   },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   actionButton: {
+    flex: 1,
     backgroundColor: '#6366F1',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    padding: 12,
+    borderRadius: 10,
     alignItems: 'center',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   actionButtonText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   deleteButton: {
     backgroundColor: '#EF4444',
+    shadowColor: '#EF4444',
   },
   deleteButtonText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   signOutButton: {
