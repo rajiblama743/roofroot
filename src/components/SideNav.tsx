@@ -122,58 +122,62 @@ const SideNav: React.FC<SideNavProps> = ({
 
           <View style={{ flex: 1 }} />
 
-          <View style={[styles.themeSection, { backgroundColor: colors.secondary, borderTopColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Theme</Text>
-            <View style={[styles.themeToggleContainer, { backgroundColor: colors.tertiary, borderColor: colors.border }]}>
-              <Text style={[styles.themeToggleText, { color: colors.textPrimary }]}>
-                {isDark ? '☀️ Light Mode' : '🌙 Dark Mode'}
-              </Text>
-              <Switch
-                value={isDark}
-                onValueChange={toggleTheme}
-                trackColor={{ false: colors.border, true: colors.iconPrimary }}
-                thumbColor={isDark ? colors.secondary : colors.secondary}
-                ios_backgroundColor={colors.border}
-              />
-            </View>
-          </View>
+          <View style={[styles.bottomSection, { backgroundColor: colors.secondary, borderTopColor: colors.border }]}>
+            <View style={styles.bottomRow}>
+              <View style={styles.bottomColumn}>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Theme</Text>
+                <View style={[styles.themeToggleContainer, { backgroundColor: colors.tertiary, borderColor: colors.border }]}>
+                  <Text style={[styles.themeToggleText, { color: colors.textPrimary }]}>
+                    {isDark ? '☀️' : '🌙'}
+                  </Text>
+                  <Switch
+                    value={isDark}
+                    onValueChange={toggleTheme}
+                    trackColor={{ false: colors.border, true: colors.iconPrimary }}
+                    thumbColor={isDark ? colors.secondary : colors.secondary}
+                    ios_backgroundColor={colors.border}
+                  />
+                </View>
+              </View>
 
-          <View style={[styles.accountSection, { backgroundColor: colors.secondary, borderTopColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Account</Text>
-            {isLoggedIn ? (
-              <>
-                {userName && (
-                  <TouchableOpacity 
-                    style={[styles.userInfo, { backgroundColor: colors.primary, borderColor: colors.border }]} 
-                    onPress={onProfile}
-                  >
-                    <Text style={[styles.userName, { color: colors.textPrimary }]}>{userName}</Text>
-                    <Text style={[styles.profileHint, { color: colors.textSecondary }]}>Tap to view profile</Text>
-                  </TouchableOpacity>
+              <View style={styles.bottomColumn}>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Account</Text>
+                {isLoggedIn ? (
+                  <>
+                    {userName && (
+                      <TouchableOpacity 
+                        style={[styles.userInfo, { backgroundColor: colors.primary, borderColor: colors.border }]} 
+                        onPress={onProfile}
+                      >
+                        <Text style={[styles.userName, { color: colors.textPrimary }]}>{userName}</Text>
+                        <Text style={[styles.profileHint, { color: colors.textSecondary }]}>Tap to view profile</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity 
+                      style={[styles.navButton, styles.signOutButton, { borderColor: colors.buttonDanger }]} 
+                      onPress={onSignOut}
+                    >
+                      <Text style={[styles.navButtonText, styles.signOutButtonText]}>Sign Out</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <TouchableOpacity 
+                      style={[styles.navButton, { backgroundColor: colors.tertiary, borderColor: colors.border }]} 
+                      onPress={onSignIn}
+                    >
+                      <Text style={[styles.navButtonText, { color: colors.textPrimary }]}>Sign In</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.navButton, styles.primaryButton, { borderColor: colors.buttonPrimary }]} 
+                      onPress={onSignUp}
+                    >
+                      <Text style={[styles.navButtonText, styles.primaryButtonText]}>Sign Up</Text>
+                    </TouchableOpacity>
+                  </>
                 )}
-                <TouchableOpacity 
-                  style={[styles.navButton, styles.signOutButton, { borderColor: colors.buttonDanger }]} 
-                  onPress={onSignOut}
-                >
-                  <Text style={[styles.navButtonText, styles.signOutButtonText]}>Sign Out</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <TouchableOpacity 
-                  style={[styles.navButton, { backgroundColor: colors.tertiary, borderColor: colors.border }]} 
-                  onPress={onSignIn}
-                >
-                  <Text style={[styles.navButtonText, { color: colors.textPrimary }]}>Sign In</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.navButton, styles.primaryButton, { borderColor: colors.buttonPrimary }]} 
-                  onPress={onSignUp}
-                >
-                  <Text style={[styles.navButtonText, styles.primaryButtonText]}>Sign Up</Text>
-                </TouchableOpacity>
-              </>
-            )}
+              </View>
+            </View>
           </View>
 
           <View style={[styles.footer, { borderTopColor: colors.border }]}>
@@ -254,9 +258,9 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     backgroundColor: '#F8FAFC',
-    padding: 8,
+    padding: 6,
     borderRadius: 6,
-    marginBottom: 8,
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
@@ -273,10 +277,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   navButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     borderRadius: 6,
-    marginBottom: 6,
+    marginBottom: 4,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     backgroundColor: '#F8FAFC',
@@ -321,6 +325,21 @@ const styles = StyleSheet.create({
   spacing: {
     height: 20,
   },
+  bottomSection: {
+    padding: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    backgroundColor: 'white',
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  bottomColumn: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
   themeSection: {
     padding: 12,
     borderTopWidth: 1,
@@ -331,8 +350,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 10,
-    borderRadius: 8,
+    padding: 6,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     backgroundColor: '#F8FAFC',
