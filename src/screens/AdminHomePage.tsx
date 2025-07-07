@@ -3,12 +3,14 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Mod
 import { authService, realEstateService, RealEstateListing } from '../firebase';
 import { adminService, AdminUserData } from '../firebase/adminService';
 import ListingForm from '../components/ListingForm';
+import { useTheme } from '../context/ThemeContext';
 
 interface AdminHomePageProps {
   onListingDetails: (listing: RealEstateListing) => void;
 }
 
 const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
+  const { colors } = useTheme();
   const [listings, setListings] = useState<RealEstateListing[]>([]);
   const [users, setUsers] = useState<AdminUserData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,29 +150,29 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Admin Dashboard</Text>
-        <Text style={styles.subtitle}>Manage Real Estate Listings</Text>
+    <View style={[styles.container, { backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { backgroundColor: colors.secondary, shadowColor: colors.cardShadow }]}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Admin Dashboard</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Manage Real Estate Listings</Text>
         {userName && (
-          <Text style={styles.welcomeText}>Welcome, {userName}!</Text>
+          <Text style={[styles.welcomeText, { color: colors.iconPrimary }]}>Welcome, {userName}!</Text>
         )}
       </View>
 
-      <View style={styles.tabContainer}>
+      <View style={[styles.tabContainer, { backgroundColor: colors.secondary, shadowColor: colors.cardShadow }]}>
         <TouchableOpacity 
-          style={[styles.tab, activeTab === 'listings' && styles.activeTab]} 
+          style={[styles.tab, activeTab === 'listings' && { backgroundColor: colors.iconPrimary }]} 
           onPress={() => setActiveTab('listings')}
         >
-          <Text style={[styles.tabText, activeTab === 'listings' && styles.activeTabText]}>
+          <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'listings' && { color: 'white' }]}>
             Listings ({listings.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={[styles.tab, activeTab === 'users' && styles.activeTab]} 
+          style={[styles.tab, activeTab === 'users' && { backgroundColor: colors.iconPrimary }]} 
           onPress={() => setActiveTab('users')}
         >
-          <Text style={[styles.tabText, activeTab === 'users' && styles.activeTabText]}>
+          <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'users' && { color: 'white' }]}>
             Users ({users.length})
           </Text>
         </TouchableOpacity>
@@ -178,7 +180,7 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
 
       {activeTab === 'listings' && (
         <View style={styles.actionsContainer}>
-          <TouchableOpacity style={styles.createButton} onPress={handleCreateListing}>
+          <TouchableOpacity style={[styles.createButton, { backgroundColor: colors.buttonSuccess, shadowColor: colors.buttonSuccess }]} onPress={handleCreateListing}>
             <Text style={styles.createButtonText}>+ Create New Listing</Text>
           </TouchableOpacity>
         </View>
@@ -187,44 +189,44 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
       <ScrollView style={styles.content}>
         {loading ? (
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading...</Text>
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
           </View>
         ) : activeTab === 'listings' ? (
           listings.length > 0 ? (
             <View style={styles.listingsContainer}>
-              <Text style={styles.sectionTitle}>Current Listings ({listings.length})</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Current Listings ({listings.length})</Text>
               {listings.map((listing) => (
                 <TouchableOpacity 
                   key={listing.id} 
-                  style={styles.listingCard}
+                  style={[styles.listingCard, { backgroundColor: colors.secondary, shadowColor: colors.cardShadow }]}
                   onPress={() => onListingDetails(listing)}
                   activeOpacity={0.7}
                 >
                   {listing.images && listing.images.length > 0 ? (
                     <Image source={{ uri: listing.images[0] }} style={styles.listingImage} />
                   ) : (
-                    <View style={styles.placeholderImage}>
+                    <View style={[styles.placeholderImage, { backgroundColor: colors.tertiary }]}>
                       <Text style={styles.placeholderText}>🖼️</Text>
-                      <Text style={styles.placeholderMessage}>Image coming soon</Text>
+                      <Text style={[styles.placeholderMessage, { color: colors.textSecondary }]}>Image coming soon</Text>
                     </View>
                   )}
                   <View style={styles.listingHeader}>
-                    <Text style={styles.listingTitle}>{listing.title}</Text>
-                    <Text style={styles.listingPrice}>${listing.price.toLocaleString()}</Text>
+                    <Text style={[styles.listingTitle, { color: colors.textPrimary }]}>{listing.title}</Text>
+                    <Text style={[styles.listingPrice, { color: colors.iconPrimary }]}>${listing.price.toLocaleString()}</Text>
                   </View>
-                  <Text style={styles.listingDescription}>{listing.description}</Text>
+                  <Text style={[styles.listingDescription, { color: colors.textSecondary }]}>{listing.description}</Text>
                   {listing.location && (
-                    <Text style={styles.listingLocation}>📍 {listing.location}</Text>
+                    <Text style={[styles.listingLocation, { color: colors.textSecondary }]}>📍 {listing.location}</Text>
                   )}
                   <View style={styles.listingActions}>
                     <TouchableOpacity 
-                      style={styles.editButton} 
+                      style={[styles.editButton, { backgroundColor: colors.iconPrimary }]} 
                       onPress={(e) => { e.stopPropagation(); handleEditListing(listing); }}
                     >
                       <Text style={styles.editButtonText}>Edit</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
-                      style={styles.deleteButton} 
+                      style={[styles.deleteButton, { backgroundColor: colors.buttonDanger }]} 
                       onPress={(e) => { e.stopPropagation(); handleDeleteListing(listing); }}
                     >
                       <Text style={styles.deleteButtonText}>Delete</Text>
@@ -235,8 +237,8 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>No Listings Available</Text>
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Listings Available</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                 Create your first listing to get started!
               </Text>
             </View>
@@ -245,27 +247,27 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
           // Users tab
           users.length > 0 ? (
             <View style={styles.usersContainer}>
-              <Text style={styles.sectionTitle}>Registered Users ({users.length})</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Registered Users ({users.length})</Text>
               {users.map((user) => (
                 <TouchableOpacity 
                   key={user.uid} 
-                  style={styles.userCard}
+                  style={[styles.userCard, { backgroundColor: colors.secondary, shadowColor: colors.cardShadow }]}
                   onPress={() => { setSelectedUser(user); setShowUserModal(true); }}
                   activeOpacity={0.7}
                 >
                   <View style={styles.userHeader}>
-                    <Text style={styles.userName}>{user.name}</Text>
-                    <Text style={[styles.userRole, user.role === 'admin' && styles.adminRole]}>
+                    <Text style={[styles.userName, { color: colors.textPrimary }]}>{user.name}</Text>
+                    <Text style={[styles.userRole, { color: colors.iconPrimary, backgroundColor: colors.tertiary }, user.role === 'admin' && { color: colors.buttonDanger, backgroundColor: colors.tertiary }]}>
                       {user.role}
                     </Text>
                   </View>
-                  <Text style={styles.userEmail}>{user.email}</Text>
-                  <Text style={styles.userCreated}>
+                  <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user.email}</Text>
+                  <Text style={[styles.userCreated, { color: colors.textSecondary }]}>
                     Created: {user.createdAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
                   </Text>
                   {user.role !== 'admin' && (
                     <TouchableOpacity 
-                      style={styles.userDeleteButton} 
+                      style={[styles.userDeleteButton, { backgroundColor: colors.buttonDanger, borderColor: colors.buttonDanger }]} 
                       onPress={(e) => { e.stopPropagation(); handleDeleteUser(user); }}
                     >
                       <Text style={styles.userDeleteButtonText}>🗑️</Text>
@@ -276,8 +278,8 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>No Users Available</Text>
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Users Available</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                 No users have registered yet.
               </Text>
             </View>
@@ -299,29 +301,29 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
         transparent={true}
         onRequestClose={() => setShowUserModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.userModalContainer}>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <View style={[styles.userModalContainer, { backgroundColor: colors.secondary }]}>
             <View style={styles.userModalHeader}>
-              <Text style={styles.userModalTitle}>User Details</Text>
+              <Text style={[styles.userModalTitle, { color: colors.textPrimary }]}>User Details</Text>
               <TouchableOpacity 
-                style={styles.userModalCloseButton} 
+                style={[styles.userModalCloseButton, { backgroundColor: colors.tertiary }]} 
                 onPress={() => setShowUserModal(false)}
               >
-                <Text style={styles.userModalCloseButtonText}>✕</Text>
+                <Text style={[styles.userModalCloseButtonText, { color: colors.textSecondary }]}>✕</Text>
               </TouchableOpacity>
             </View>
             {selectedUser && (
               <>
-                <Text style={styles.userModalLabel}>Name:</Text>
-                <Text style={styles.userModalValue}>{selectedUser.name}</Text>
-                <Text style={styles.userModalLabel}>Email:</Text>
-                <Text style={styles.userModalValue}>{selectedUser.email}</Text>
-                <Text style={styles.userModalLabel}>Role:</Text>
-                <Text style={styles.userModalValue}>{selectedUser.role}</Text>
-                <Text style={styles.userModalLabel}>User ID:</Text>
-                <Text style={styles.userModalValue}>{selectedUser.uid}</Text>
-                <Text style={styles.userModalLabel}>Created At:</Text>
-                <Text style={styles.userModalValue}>{selectedUser.createdAt?.toDate?.()?.toLocaleString() || 'Unknown'}</Text>
+                <Text style={[styles.userModalLabel, { color: colors.textSecondary }]}>Name:</Text>
+                <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{selectedUser.name}</Text>
+                <Text style={[styles.userModalLabel, { color: colors.textSecondary }]}>Email:</Text>
+                <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{selectedUser.email}</Text>
+                <Text style={[styles.userModalLabel, { color: colors.textSecondary }]}>Role:</Text>
+                <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{selectedUser.role}</Text>
+                <Text style={[styles.userModalLabel, { color: colors.textSecondary }]}>User ID:</Text>
+                <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{selectedUser.uid}</Text>
+                <Text style={[styles.userModalLabel, { color: colors.textSecondary }]}>Created At:</Text>
+                <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{selectedUser.createdAt?.toDate?.()?.toLocaleString() || 'Unknown'}</Text>
               </>
             )}
           </View>
@@ -334,37 +336,30 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   brandContainer: {
-    backgroundColor: 'white',
     alignItems: 'center',
     paddingVertical: 16,
     paddingTop: 60,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
   },
   brandTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1E293B',
     textAlign: 'center',
   },
   brandSlogan: {
     fontSize: 14,
-    color: '#64748B',
     fontWeight: 'normal',
     opacity: 0.7,
     textAlign: 'center',
     marginTop: 4,
   },
   header: {
-    backgroundColor: 'white',
     padding: 20,
     paddingTop: 20,
     paddingBottom: 12,
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -373,27 +368,22 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1E293B',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: '#64748B',
     marginBottom: 8,
   },
   welcomeText: {
     fontSize: 14,
-    color: '#6366F1',
     fontWeight: '600',
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: 'white',
     marginHorizontal: 20,
     marginTop: 10,
     borderRadius: 12,
     padding: 4,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -412,7 +402,6 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#64748B',
   },
   activeTabText: {
     color: 'white',
@@ -422,11 +411,9 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   createButton: {
-    backgroundColor: '#10B981',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -450,7 +437,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#64748B',
   },
   listingsContainer: {
     marginBottom: 20,
@@ -459,11 +445,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   userCard: {
-    backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -478,14 +462,11 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1E293B',
     flex: 1,
   },
   userRole: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6366F1',
-    backgroundColor: '#EEF2FF',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -497,25 +478,20 @@ const styles = StyleSheet.create({
   },
   userEmail: {
     fontSize: 14,
-    color: '#64748B',
     marginBottom: 4,
   },
   userCreated: {
     fontSize: 12,
-    color: '#94A3B8',
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1E293B',
     marginBottom: 16,
   },
   listingCard: {
-    backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -530,23 +506,19 @@ const styles = StyleSheet.create({
   listingTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1E293B',
     flex: 1,
   },
   listingPrice: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#6366F1',
   },
   listingDescription: {
     fontSize: 14,
-    color: '#64748B',
     marginBottom: 8,
     lineHeight: 20,
   },
   listingLocation: {
     fontSize: 12,
-    color: '#94A3B8',
     marginBottom: 12,
   },
   listingImage: {
@@ -559,7 +531,6 @@ const styles = StyleSheet.create({
   placeholderImage: {
     width: '100%',
     height: 180,
-    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
     borderTopLeftRadius: 12,
@@ -573,7 +544,6 @@ const styles = StyleSheet.create({
   },
   placeholderMessage: {
     fontSize: 14,
-    color: '#64748B',
     textAlign: 'center',
   },
   listingActions: {
@@ -581,7 +551,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   viewButton: {
-    backgroundColor: '#10B981',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
@@ -594,7 +563,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   editButton: {
-    backgroundColor: '#6366F1',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
@@ -607,7 +575,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   deleteButton: {
-    backgroundColor: '#EF4444',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
@@ -628,12 +595,10 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1E293B',
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: '#64748B',
     textAlign: 'center',
   },
   userActionsRow: {
@@ -642,7 +607,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   userViewButton: {
-    backgroundColor: '#6366F1',
     padding: 10,
     borderRadius: 8,
     alignItems: 'center',
@@ -654,12 +618,10 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   userModalContainer: {
-    backgroundColor: 'white',
     borderRadius: 16,
     padding: 24,
     width: 340,
@@ -677,17 +639,14 @@ const styles = StyleSheet.create({
   userModalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1E293B',
   },
   userModalLabel: {
     fontSize: 14,
-    color: '#64748B',
     fontWeight: '600',
     marginTop: 8,
   },
   userModalValue: {
     fontSize: 16,
-    color: '#1E293B',
     fontWeight: '500',
   },
   userModalActions: {
@@ -699,17 +658,14 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
   userModalCloseButtonText: {
     fontSize: 16,
-    color: '#64748B',
     fontWeight: 'bold',
   },
   userDeleteButton: {
-    backgroundColor: '#DC2626',
     padding: 6,
     borderRadius: 20,
     alignItems: 'center',
@@ -719,7 +675,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderWidth: 1,
-    borderColor: '#B91C1C',
   },
   userDeleteButtonText: {
     color: 'white',

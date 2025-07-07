@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
 import { authService } from '../firebase';
+import { useTheme } from '../context/ThemeContext';
 
 interface SignUpScreenProps {
   onSignUpSuccess?: () => void;
@@ -9,6 +10,7 @@ interface SignUpScreenProps {
 }
 
 const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUpSuccess, onBack, navigation }) => {
+  const { colors, isDark } = useTheme();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -72,20 +74,20 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUpSuccess, onBack, na
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[styles.container, { backgroundColor: colors.primary }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       
       {/* Header with Title, Subtitle and Close Button */}
-      <View style={styles.headerContainer}>
+      <View style={[styles.headerContainer, { backgroundColor: colors.secondary, borderBottomColor: colors.border }]}>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Create Account</Text>
-          <Text style={styles.headerSubtitle}>Join RoofRoot and start your journey</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Create Account</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Join RoofRoot and start your journey</Text>
         </View>
         <TouchableOpacity 
-          style={styles.closeButton} 
+          style={[styles.closeButton, { backgroundColor: colors.tertiary }]} 
           onPress={() => navigation?.navigate('CustomerHome')}
         >
-          <Text style={styles.closeButtonText}>✕</Text>
+          <Text style={[styles.closeButtonText, { color: colors.textSecondary }]}>✕</Text>
         </TouchableOpacity>
       </View>
 
@@ -94,42 +96,42 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUpSuccess, onBack, na
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.formContainer}>
+          <View style={[styles.formContainer, { backgroundColor: colors.secondary }]}>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Full Name</Text>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>Full Name</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.primary, borderColor: colors.border, color: colors.textPrimary }]}
                 placeholder="Enter your full name"
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={colors.textTertiary}
               />
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email Address</Text>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>Email Address</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.primary, borderColor: colors.border, color: colors.textPrimary }]}
                 placeholder="Enter your email"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={colors.textTertiary}
               />
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.passwordContainer}>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>Password</Text>
+              <View style={[styles.passwordContainer, { backgroundColor: colors.primary, borderColor: colors.border }]}>
                 <TextInput
-                  style={styles.passwordInput}
+                  style={[styles.passwordInput, { color: colors.textPrimary }]}
                   placeholder="Create a password"
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={colors.textTertiary}
                 />
                 <TouchableOpacity 
                   style={styles.eyeButton}
@@ -143,7 +145,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUpSuccess, onBack, na
             </View>
 
             <TouchableOpacity 
-              style={[styles.button, loading && styles.buttonDisabled]} 
+              style={[styles.button, { backgroundColor: colors.buttonPrimary }, loading && styles.buttonDisabled]} 
               onPress={handleSignUp} 
               disabled={loading}
             >

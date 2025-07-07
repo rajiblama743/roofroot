@@ -1,23 +1,31 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
 interface AppHeaderProps {
   onMenuPress: () => void;
   userName?: string;
 }
 
-const AppHeader: React.FC<AppHeaderProps> = ({ onMenuPress, userName }) => (
-  <View style={styles.header}>
-    <TouchableOpacity style={styles.menuButton} onPress={onMenuPress}>
-      <Text style={styles.menuButtonText}>☰</Text>
-    </TouchableOpacity>
-    <View style={styles.headerContent}>
-      <Text style={styles.headerTitle}>RoofRoot</Text>
-      <Text style={styles.slogan}>Find Your Dream Home</Text>
+const AppHeader: React.FC<AppHeaderProps> = ({ onMenuPress, userName }) => {
+  const { colors } = useTheme();
+  
+  return (
+    <View style={[styles.header, { backgroundColor: colors.secondary }]}>
+      <TouchableOpacity 
+        style={[styles.menuButton, { backgroundColor: colors.tertiary }]} 
+        onPress={onMenuPress}
+      >
+        <Text style={[styles.menuButtonText, { color: colors.textPrimary }]}>☰</Text>
+      </TouchableOpacity>
+      <View style={styles.headerContent}>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>RoofRoot</Text>
+        <Text style={[styles.slogan, { color: colors.textSecondary }]}>Find Your Dream Home</Text>
+      </View>
+      <View style={styles.spacer} />
     </View>
-    <View style={styles.spacer} />
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   header: {

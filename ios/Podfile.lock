@@ -3668,6 +3668,35 @@ PODS:
     - React-utils (= 0.80.1)
     - SocketRocket
   - RecaptchaInterop (101.0.0)
+  - RNCAsyncStorage (1.24.0):
+    - boost
+    - DoubleConversion
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SocketRocket
+    - Yoga
   - RNCMaskedView (0.1.11):
     - React
   - RNFBApp (22.2.1):
@@ -4007,6 +4036,7 @@ DEPENDENCIES:
   - ReactAppDependencyProvider (from `build/generated/ios`)
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
+  - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNCMaskedView (from `../node_modules/@react-native-community/masked-view`)"
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
   - "RNFBAuth (from `../node_modules/@react-native-firebase/auth`)"
@@ -4194,6 +4224,8 @@ EXTERNAL SOURCES:
     :path: build/generated/ios
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
+  RNCAsyncStorage:
+    :path: "../node_modules/@react-native-async-storage/async-storage"
   RNCMaskedView:
     :path: "../node_modules/@react-native-community/masked-view"
   RNFBApp:
@@ -4311,6 +4343,7 @@ SPEC CHECKSUMS:
   ReactCodegen: 08105625e801766da74078b4b122c16d539d6872
   ReactCommon: 4c7015a078757bb1f3032df5f75dd61b2121f297
   RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
+  RNCAsyncStorage: b386ecff869f4a7f6d7d7f24fccb621274da7bb3
   RNCMaskedView: 4c5ee1c8667d56077246cc6d1977f77393923560
   RNFBApp: 557f15b87d602ed5879a1cbd6dc574481bccb278
   RNFBAuth: fb0421232f23c6801923926f4447cf73e62418e8

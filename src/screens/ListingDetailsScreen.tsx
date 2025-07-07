@@ -13,6 +13,7 @@ import {
 import { RealEstateListing } from '../firebase/realEstateService';
 import { realEstateService } from '../firebase/realEstateService';
 import { authService } from '../firebase/authService';
+import { useTheme } from '../context/ThemeContext';
 
 interface ListingDetailsScreenProps {
   listing: RealEstateListing;
@@ -23,6 +24,7 @@ interface ListingDetailsScreenProps {
 const { width } = Dimensions.get('window');
 
 const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, onBack, onImageRemoved }) => {
+  const { colors } = useTheme();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isImageModalVisible, setIsImageModalVisible] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -94,12 +96,12 @@ const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, on
   const isAdmin = currentUser?.role === 'admin';
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.primary }]}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Image Gallery */}
         {listing.images && listing.images.length > 0 ? (
-          <View style={styles.imageGallery}>
-            <Text style={styles.galleryTitle}>Property Images ({listing.images.length})</Text>
+          <View style={[styles.imageGallery, { backgroundColor: colors.secondary }]}>
+            <Text style={[styles.galleryTitle, { color: colors.textPrimary }]}>Property Images ({listing.images.length})</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
               {listing.images.map((imageUrl, index) => (
                 <View key={index} style={styles.galleryImageContainer}>
@@ -122,67 +124,67 @@ const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, on
             </ScrollView>
           </View>
         ) : (
-          <View style={styles.imageContainer}>
-            <View style={styles.placeholderImage}>
+          <View style={[styles.imageContainer, { backgroundColor: colors.secondary }]}>
+            <View style={[styles.placeholderImage, { backgroundColor: colors.tertiary }]}>
               <Text style={styles.placeholderText}>🖼️</Text>
-              <Text style={styles.placeholderMessage}>Image coming soon</Text>
+              <Text style={[styles.placeholderMessage, { color: colors.textSecondary }]}>Image coming soon</Text>
             </View>
           </View>
         )}
 
         {/* Content Section */}
-        <View style={styles.detailsContainer}>
+        <View style={[styles.detailsContainer, { backgroundColor: colors.secondary }]}>
           {/* Title */}
-          <Text style={styles.title}>{listing.title}</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{listing.title}</Text>
 
           {/* Price */}
           <View style={styles.priceContainer}>
-            <Text style={styles.price}>{formatPrice(listing.price)}</Text>
+            <Text style={[styles.price, { color: colors.buttonSuccess }]}>{formatPrice(listing.price)}</Text>
           </View>
 
           {/* Location */}
           {listing.location && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>📍 Location</Text>
-              <Text style={styles.infoValue}>{listing.location}</Text>
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>📍 Location</Text>
+              <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{listing.location}</Text>
             </View>
           )}
 
           {/* Bedrooms */}
           {listing.bedrooms && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>🛏️ Bedrooms</Text>
-              <Text style={styles.infoValue}>{listing.bedrooms}</Text>
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>🛏️ Bedrooms</Text>
+              <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{listing.bedrooms}</Text>
             </View>
           )}
 
           {/* Bathrooms */}
           {listing.bathrooms && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>🚿 Bathrooms</Text>
-              <Text style={styles.infoValue}>{listing.bathrooms}</Text>
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>🚿 Bathrooms</Text>
+              <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{listing.bathrooms}</Text>
             </View>
           )}
 
           {/* Square Feet */}
           {listing.squareFeet && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>📐 Square Feet</Text>
-              <Text style={styles.infoValue}>{listing.squareFeet.toLocaleString()} sq ft</Text>
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>📐 Square Feet</Text>
+              <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{listing.squareFeet.toLocaleString()} sq ft</Text>
             </View>
           )}
 
           {/* Description */}
-          <View style={styles.descriptionContainer}>
-            <Text style={styles.descriptionLabel}>Description</Text>
-            <Text style={styles.description}>{listing.description}</Text>
+          <View style={[styles.descriptionContainer, { borderTopColor: colors.border }]}>
+            <Text style={[styles.descriptionLabel, { color: colors.textPrimary }]}>Description</Text>
+            <Text style={[styles.description, { color: colors.textSecondary }]}>{listing.description}</Text>
           </View>
 
           {/* Created Date */}
           {listing.createdAt && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>📅 Listed</Text>
-              <Text style={styles.infoValue}>
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>📅 Listed</Text>
+              <Text style={[styles.infoValue, { color: colors.textPrimary }]}>
                 {listing.createdAt.toDate ? 
                   listing.createdAt.toDate().toLocaleDateString() : 
                   'Recently'
@@ -200,12 +202,12 @@ const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, on
         animationType="fade"
         onRequestClose={closeImageModal}
       >
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
           <TouchableOpacity 
-            style={styles.modalCloseButton} 
+            style={[styles.modalCloseButton, { backgroundColor: colors.secondary }]} 
             onPress={closeImageModal}
           >
-            <Text style={styles.modalCloseButtonText}>✕</Text>
+            <Text style={[styles.modalCloseButtonText, { color: colors.iconPrimary }]}>✕</Text>
           </TouchableOpacity>
           {selectedImage && (
             <Image 
@@ -223,7 +225,6 @@ const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, on
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   header: {
     flexDirection: 'row',
@@ -231,45 +232,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     paddingTop: 60,
-    backgroundColor: 'white',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 8,
   },
   backButtonText: {
     fontSize: 18,
-    color: '#6366F1',
     fontWeight: '600',
   },
   placeholder: {
     width: 40,
   },
   pageTitleContainer: {
-    backgroundColor: 'white',
     paddingVertical: 12,
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
   },
   pageTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1E293B',
   },
   content: {
     flex: 1,
   },
   imageContainer: {
     height: 250,
-    backgroundColor: 'white',
   },
   image: {
     width: '100%',
@@ -279,7 +272,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
   },
   placeholderText: {
     fontSize: 48,
@@ -287,17 +279,14 @@ const styles = StyleSheet.create({
   },
   placeholderMessage: {
     fontSize: 16,
-    color: '#64748B',
     fontWeight: '500',
   },
   detailsContainer: {
     padding: 20,
-    backgroundColor: 'white',
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1E293B',
     marginBottom: 12,
   },
   priceContainer: {
@@ -306,7 +295,6 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#059669',
   },
   infoRow: {
     flexDirection: 'row',
@@ -314,16 +302,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
   },
   infoLabel: {
     fontSize: 16,
-    color: '#64748B',
     fontWeight: '500',
   },
   infoValue: {
     fontSize: 16,
-    color: '#1E293B',
     fontWeight: '600',
     textAlign: 'right',
     flex: 1,
@@ -333,28 +318,23 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
   },
   descriptionLabel: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1E293B',
     marginBottom: 12,
   },
   description: {
     fontSize: 16,
     lineHeight: 24,
-    color: '#475569',
   },
   imageGallery: {
-    backgroundColor: 'white',
     padding: 20,
     marginBottom: 16,
   },
   galleryTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1E293B',
     marginBottom: 12,
   },
   imageScroll: {
@@ -391,7 +371,6 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -402,7 +381,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
@@ -410,7 +388,6 @@ const styles = StyleSheet.create({
   modalCloseButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#6366F1',
   },
 });
 

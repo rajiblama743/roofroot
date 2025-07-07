@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { authService } from '../firebase/authService';
+import { useTheme } from '../context/ThemeContext';
 
 interface User {
   uid: string;
@@ -26,6 +27,7 @@ interface ProfileScreenProps {
 }
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onBack, onSignOut }) => {
+  const { colors } = useTheme();
   const [loading, setLoading] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -97,45 +99,45 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onBack, onSignOut }
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.primary }]}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile Info */}
-        <View style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
+        <View style={[styles.profileSection, { backgroundColor: colors.secondary }]}>
+          <View style={[styles.avatarContainer, { backgroundColor: colors.buttonPrimary }]}>
             <Text style={styles.avatar}>{user.name.charAt(0).toUpperCase()}</Text>
           </View>
           
-          <Text style={styles.userName}>{user.name}</Text>
-          <Text style={styles.userEmail}>{user.email}</Text>
+          <Text style={[styles.userName, { color: colors.textPrimary }]}>{user.name}</Text>
+          <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user.email}</Text>
         </View>
 
         {/* Account Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account Details</Text>
+        <View style={[styles.section, { backgroundColor: colors.secondary }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Account Details</Text>
           
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Name</Text>
-            <Text style={styles.infoValue}>{user.name}</Text>
+          <View style={[styles.infoRow, { borderBottomColor: colors.borderLight }]}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Name</Text>
+            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{user.name}</Text>
           </View>
           
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Email</Text>
-            <Text style={styles.infoValue}>{user.email}</Text>
+          <View style={[styles.infoRow, { borderBottomColor: colors.borderLight }]}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Email</Text>
+            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{user.email}</Text>
           </View>
           
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>User ID</Text>
-            <Text style={styles.infoValue}>{user.uid}</Text>
+          <View style={[styles.infoRow, { borderBottomColor: colors.borderLight }]}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>User ID</Text>
+            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{user.uid}</Text>
           </View>
         </View>
 
         {/* Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account Actions</Text>
+        <View style={[styles.section, { backgroundColor: colors.secondary }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Account Actions</Text>
           
           <View style={styles.actionButtonsContainer}>
             <TouchableOpacity 
-              style={styles.actionButton}
+              style={[styles.actionButton, { backgroundColor: colors.buttonPrimary }]}
               onPress={() => setShowPasswordModal(true)}
               disabled={loading}
             >
@@ -143,7 +145,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onBack, onSignOut }
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.actionButton, styles.deleteButton]}
+              style={[styles.actionButton, styles.deleteButton, { backgroundColor: colors.buttonDanger }]}
               onPress={handleDeleteAccount}
               disabled={loading}
             >
@@ -153,13 +155,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onBack, onSignOut }
         </View>
 
         {/* Sign Out */}
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.secondary }]}>
           <TouchableOpacity 
-            style={styles.signOutButton}
+            style={[styles.signOutButton, { backgroundColor: colors.tertiary }]}
             onPress={onSignOut}
             disabled={loading}
           >
-            <Text style={styles.signOutButtonText}>Sign Out</Text>
+            <Text style={[styles.signOutButtonText, { color: colors.textSecondary }]}>Sign Out</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -171,39 +173,39 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onBack, onSignOut }
         presentationStyle="pageSheet"
         onRequestClose={() => setShowPasswordModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Change Password</Text>
+        <View style={[styles.modalContainer, { backgroundColor: colors.primary }]}>
+          <View style={[styles.modalHeader, { backgroundColor: colors.secondary, borderBottomColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Change Password</Text>
             <TouchableOpacity 
-              style={styles.closeButton}
+              style={[styles.closeButton, { backgroundColor: colors.tertiary }]}
               onPress={() => setShowPasswordModal(false)}
             >
-              <Text style={styles.closeButtonText}>✕</Text>
+              <Text style={[styles.closeButtonText, { color: colors.textSecondary }]}>✕</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.modalContent}>
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>New Password</Text>
+              <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>New Password</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.secondary, borderColor: colors.border, color: colors.textPrimary }]}
                 value={newPassword}
                 onChangeText={setNewPassword}
                 placeholder="Enter new password"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={colors.textTertiary}
                 secureTextEntry
                 autoCapitalize="none"
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Confirm Password</Text>
+              <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>Confirm Password</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.secondary, borderColor: colors.border, color: colors.textPrimary }]}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 placeholder="Confirm new password"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={colors.textTertiary}
                 secureTextEntry
                 autoCapitalize="none"
               />
@@ -211,15 +213,15 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onBack, onSignOut }
 
             <View style={styles.modalButtons}>
               <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelModalButton]}
+                style={[styles.modalButton, styles.cancelModalButton, { backgroundColor: colors.tertiary }]}
                 onPress={() => setShowPasswordModal(false)}
                 disabled={loading}
               >
-                <Text style={styles.cancelModalButtonText}>Cancel</Text>
+                <Text style={[styles.cancelModalButtonText, { color: colors.textSecondary }]}>Cancel</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.modalButton, styles.confirmModalButton, loading && styles.disabledButton]}
+                style={[styles.modalButton, styles.confirmModalButton, { backgroundColor: colors.buttonPrimary }, loading && styles.disabledButton]}
                 onPress={handleChangePassword}
                 disabled={loading}
               >

@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Switch, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../context/ThemeContext';
 
 interface SideNavProps {
   visible: boolean;
@@ -26,6 +27,31 @@ const SideNav: React.FC<SideNavProps> = ({
   userRole
 }) => {
   const navigation = useNavigation();
+  const { colors, isDark, toggleTheme } = useTheme();
+  const slideAnim = useRef(new Animated.Value(-280)).current;
+
+  // Ensure navbar starts off-screen
+  useEffect(() => {
+    slideAnim.setValue(-280);
+  }, []);
+
+  useEffect(() => {
+    if (visible) {
+      // Slide in from left
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      // Slide out to left
+      Animated.timing(slideAnim, {
+        toValue: -280,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible, slideAnim]);
 
   const handleHome = () => {
     onClose();
@@ -36,62 +62,124 @@ const SideNav: React.FC<SideNavProps> = ({
     }
   };
 
+  const handleClose = () => {
+    // Animate out first, then call onClose
+    Animated.timing(slideAnim, {
+      toValue: -280,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => {
+      onClose();
+    });
+  };
+
   return (
     <Modal
       visible={visible}
       transparent={true}
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.sideNav}>
-          <View style={styles.header}>
+      <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
+        <TouchableOpacity 
+          style={styles.overlayTouchable} 
+          activeOpacity={1} 
+          onPress={handleClose}
+        >
+          <View style={styles.overlaySpacer} />
+        </TouchableOpacity>
+        <Animated.View 
+          style={[
+            styles.sideNav, 
+            { 
+              backgroundColor: colors.secondary,
+              transform: [{ translateX: slideAnim }]
+            }
+          ]}
+        >
+          <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <View style={styles.spacer} />
             <View style={styles.titleContainer}>
-              <Text style={styles.title}>RoofRoot</Text>
-              <Text style={styles.slogan}>Find Your Dream Home</Text>
+              <Text style={[styles.title, { color: colors.textPrimary }]}>RoofRoot</Text>
+              <Text style={[styles.slogan, { color: colors.textSecondary }]}>Find Your Dream Home</Text>
             </View>
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <Text style={styles.closeButtonText}>✕</Text>
+            <TouchableOpacity 
+              style={[styles.closeButton, { backgroundColor: colors.tertiary }]} 
+              onPress={handleClose}
+            >
+              <Text style={[styles.closeButtonText, { color: colors.textSecondary }]}>✕</Text>
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.navButton} onPress={handleHome}>
-            <Text style={styles.navButtonText}>🏠 Home</Text>
+          <View style={styles.spacing} />
+
+          <TouchableOpacity 
+            style={[styles.navButton, { backgroundColor: colors.tertiary, borderColor: colors.border }]} 
+            onPress={handleHome}
+          >
+            <Text style={[styles.navButtonText, { color: colors.textPrimary }]}>🏠 Home</Text>
           </TouchableOpacity>
 
           <View style={{ flex: 1 }} />
 
-          <View style={styles.accountSection}>
-            <Text style={styles.sectionTitle}>Account</Text>
+          <View style={[styles.themeSection, { backgroundColor: colors.secondary, borderTopColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Theme</Text>
+            <View style={[styles.themeToggleContainer, { backgroundColor: colors.tertiary, borderColor: colors.border }]}>
+              <Text style={[styles.themeToggleText, { color: colors.textPrimary }]}>
+                {isDark ? '☀️ Light Mode' : '🌙 Dark Mode'}
+              </Text>
+              <Switch
+                value={isDark}
+                onValueChange={toggleTheme}
+                trackColor={{ false: colors.border, true: colors.iconPrimary }}
+                thumbColor={isDark ? colors.secondary : colors.secondary}
+                ios_backgroundColor={colors.border}
+              />
+            </View>
+          </View>
+
+          <View style={[styles.accountSection, { backgroundColor: colors.secondary, borderTopColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Account</Text>
             {isLoggedIn ? (
               <>
                 {userName && (
-                  <TouchableOpacity style={styles.userInfo} onPress={onProfile}>
-                    <Text style={styles.userName}>{userName}</Text>
-                    <Text style={styles.profileHint}>Tap to view profile</Text>
+                  <TouchableOpacity 
+                    style={[styles.userInfo, { backgroundColor: colors.primary, borderColor: colors.border }]} 
+                    onPress={onProfile}
+                  >
+                    <Text style={[styles.userName, { color: colors.textPrimary }]}>{userName}</Text>
+                    <Text style={[styles.profileHint, { color: colors.textSecondary }]}>Tap to view profile</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity style={[styles.navButton, styles.signOutButton]} onPress={onSignOut}>
+                <TouchableOpacity 
+                  style={[styles.navButton, styles.signOutButton, { borderColor: colors.buttonDanger }]} 
+                  onPress={onSignOut}
+                >
                   <Text style={[styles.navButtonText, styles.signOutButtonText]}>Sign Out</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <>
-                <TouchableOpacity style={styles.navButton} onPress={onSignIn}>
-                  <Text style={styles.navButtonText}>Sign In</Text>
+                <TouchableOpacity 
+                  style={[styles.navButton, { backgroundColor: colors.tertiary, borderColor: colors.border }]} 
+                  onPress={onSignIn}
+                >
+                  <Text style={[styles.navButtonText, { color: colors.textPrimary }]}>Sign In</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.navButton, styles.primaryButton]} onPress={onSignUp}>
+                <TouchableOpacity 
+                  style={[styles.navButton, styles.primaryButton, { borderColor: colors.buttonPrimary }]} 
+                  onPress={onSignUp}
+                >
                   <Text style={[styles.navButtonText, styles.primaryButtonText]}>Sign Up</Text>
                 </TouchableOpacity>
               </>
             )}
           </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Building Dreams, One Home at a Time</Text>
+          <View style={[styles.footer, { borderTopColor: colors.border }]}>
+            <Text style={[styles.footerText, { color: colors.textSecondary }]}>Building Dreams, One Home at a Time</Text>
           </View>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -159,36 +247,36 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   userInfo: {
     backgroundColor: '#F8FAFC',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   userName: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
     color: '#1E293B',
     textAlign: 'center',
   },
   profileHint: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#64748B',
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
   navButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     backgroundColor: '#F8FAFC',
@@ -202,7 +290,7 @@ const styles = StyleSheet.create({
     borderColor: '#EF4444',
   },
   navButtonText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
     color: '#374151',
     textAlign: 'center',
@@ -225,13 +313,43 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   accountSection: {
-    padding: 20,
+    padding: 8,
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     backgroundColor: 'white',
   },
+  spacing: {
+    height: 20,
+  },
+  themeSection: {
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    backgroundColor: 'white',
+  },
+  themeToggleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+  },
+  themeToggleText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+  },
   spacer: {
     width: 32,
+  },
+  overlayTouchable: {
+    flex: 1,
+  },
+  overlaySpacer: {
+    flex: 1,
   },
 });
 

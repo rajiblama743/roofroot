@@ -17,6 +17,7 @@ import 'react-native-gesture-handler';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AppHeader from './src/components/AppHeader';
+import { ThemeProvider } from './src/context/ThemeContext';
 
 const Stack = createStackNavigator();
 
@@ -70,14 +71,15 @@ function App() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
-      <AppHeader onMenuPress={() => setSideNavVisible(true)} userName={userData?.name} />
-      <Stack.Navigator
-        initialRouteName={userData?.role === 'admin' ? 'AdminHome' : 'CustomerHome'}
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
+    <ThemeProvider>
+      <NavigationContainer ref={navigationRef}>
+        <AppHeader onMenuPress={() => setSideNavVisible(true)} userName={userData?.name} />
+        <Stack.Navigator
+          initialRouteName={userData?.role === 'admin' ? 'AdminHome' : 'CustomerHome'}
+          screenOptions={{
+            headerShown: false,
+          }}
+        >
         <Stack.Screen name="SignIn">
           {props => <SignInScreen {...props} onLogin={userData => {
             setUserData(userData);
@@ -115,34 +117,35 @@ function App() {
         <Stack.Screen name="Profile">
           {props => userData ? <ProfileScreen {...props} user={userData} onSignOut={() => handleSignOut(props.navigation)} /> : null}
         </Stack.Screen>
-      </Stack.Navigator>
-      <SideNav
-        visible={sideNavVisible}
-        onClose={() => setSideNavVisible(false)}
-        onSignIn={() => {
-          setSideNavVisible(false);
-          navigationRef.current?.navigate('SignIn' as never);
-        }}
-        onSignUp={() => {
-          setSideNavVisible(false);
-          navigationRef.current?.navigate('SignUp' as never);
-        }}
-        onSignOut={() => {
-          setSideNavVisible(false);
-          authService.signOut().then(() => {
-            setUserData(null);
-            navigationRef.current?.reset({ index: 0, routes: [{ name: 'CustomerHome' as never }] });
-          });
-        }}
-        onProfile={() => {
-          setSideNavVisible(false);
-          navigationRef.current?.navigate('Profile' as never);
-        }}
-        isLoggedIn={!!userData}
-        userName={userData?.name}
-        userRole={userData?.role}
-      />
-    </NavigationContainer>
+              </Stack.Navigator>
+        <SideNav
+          visible={sideNavVisible}
+          onClose={() => setSideNavVisible(false)}
+          onSignIn={() => {
+            setSideNavVisible(false);
+            navigationRef.current?.navigate('SignIn' as never);
+          }}
+          onSignUp={() => {
+            setSideNavVisible(false);
+            navigationRef.current?.navigate('SignUp' as never);
+          }}
+          onSignOut={() => {
+            setSideNavVisible(false);
+            authService.signOut().then(() => {
+              setUserData(null);
+              navigationRef.current?.reset({ index: 0, routes: [{ name: 'CustomerHome' as never }] });
+            });
+          }}
+          onProfile={() => {
+            setSideNavVisible(false);
+            navigationRef.current?.navigate('Profile' as never);
+          }}
+          isLoggedIn={!!userData}
+          userName={userData?.name}
+          userRole={userData?.role}
+        />
+      </NavigationContainer>
+    </ThemeProvider>
   );
 }
 

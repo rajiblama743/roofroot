@@ -12,6 +12,7 @@
   "dependencies": {
     "@babel/plugin-transform-runtime": "^7.28.0",
     "@babel/runtime-corejs3": "^7.28.0",
+    "@react-native-async-storage/async-storage": "^1.24.0",
     "@react-native-community/masked-view": "^0.1.11",
     "@react-native-firebase/app": "^22.2.1",
     "@react-native-firebase/auth": "^22.2.1",
