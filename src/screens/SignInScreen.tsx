@@ -7,9 +7,10 @@ interface SignInScreenProps {
   onSignInSuccess?: () => void;
   onBack?: () => void;
   onLogin?: (userData: UserData) => void;
+  navigation?: any;
 }
 
-const SignInScreen: React.FC<SignInScreenProps> = ({ onSignInSuccess, onBack, onLogin }) => {
+const SignInScreen: React.FC<SignInScreenProps> = ({ onSignInSuccess, onBack, onLogin, navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -79,21 +80,25 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ onSignInSuccess, onBack, on
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
-      {/* Back Button */}
-      <TouchableOpacity style={styles.backButton} onPress={onBack}>
-        <Text style={styles.backButtonText}>← Back</Text>
-      </TouchableOpacity>
+      {/* Header with Title, Subtitle and Close Button */}
+      <View style={styles.headerContainer}>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Welcome Back</Text>
+          <Text style={styles.headerSubtitle}>Sign in to your RoofRoot account</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.closeButton} 
+          onPress={() => navigation?.navigate('CustomerHome')}
+        >
+          <Text style={styles.closeButtonText}>✕</Text>
+        </TouchableOpacity>
+      </View>
 
       <KeyboardAvoidingView 
         style={styles.keyboardContainer} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to your RoofRoot account</Text>
-          </View>
-
           <View style={styles.formContainer}>
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Email Address</Text>
@@ -151,23 +156,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    zIndex: 1000,
-    padding: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 20,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    position: 'relative',
   },
-  backButtonText: {
-    color: '#6366F1',
+  headerContent: {
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonText: {
     fontSize: 16,
+    color: '#64748B',
     fontWeight: 'bold',
   },
   keyboardContainer: {
@@ -175,8 +202,8 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
     padding: 24,
+    paddingTop: 24,
   },
   header: {
     alignItems: 'center',

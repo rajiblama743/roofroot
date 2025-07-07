@@ -268,7 +268,7 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
                       style={styles.userDeleteButton} 
                       onPress={(e) => { e.stopPropagation(); handleDeleteUser(user); }}
                     >
-                      <Text style={styles.userDeleteButtonText}>🗑️ Delete</Text>
+                      <Text style={styles.userDeleteButtonText}>🗑️</Text>
                     </TouchableOpacity>
                   )}
                 </TouchableOpacity>
@@ -301,7 +301,15 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.userModalContainer}>
-            <Text style={styles.userModalTitle}>User Details</Text>
+            <View style={styles.userModalHeader}>
+              <Text style={styles.userModalTitle}>User Details</Text>
+              <TouchableOpacity 
+                style={styles.userModalCloseButton} 
+                onPress={() => setShowUserModal(false)}
+              >
+                <Text style={styles.userModalCloseButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
             {selectedUser && (
               <>
                 <Text style={styles.userModalLabel}>Name:</Text>
@@ -316,15 +324,6 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
                 <Text style={styles.userModalValue}>{selectedUser.createdAt?.toDate?.()?.toLocaleString() || 'Unknown'}</Text>
               </>
             )}
-            <View style={styles.userModalActions}>
-              <TouchableOpacity 
-                style={[styles.userModalCloseButton, styles.userModalCloseButtonFullWidth]} 
-                onPress={() => setShowUserModal(false)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.userModalCloseButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       </Modal>
@@ -663,15 +662,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 16,
     padding: 24,
-    width: 320,
+    width: 340,
     maxWidth: '90%',
     alignItems: 'flex-start',
+  },
+  userModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    width: '100%',
+    paddingRight: 0,
   },
   userModalTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#1E293B',
-    marginBottom: 16,
   },
   userModalLabel: {
     fontSize: 14,
@@ -690,33 +696,34 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   userModalCloseButton: {
-    backgroundColor: 'rgba(209, 213, 219, 0.7)',
-    padding: 12,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-  },
-  userModalCloseButtonFullWidth: {
-    flex: 1,
   },
   userModalCloseButtonText: {
+    fontSize: 16,
     color: '#64748B',
-    fontWeight: '600',
-    fontSize: 14,
+    fontWeight: 'bold',
   },
   userDeleteButton: {
-    backgroundColor: '#EF4444',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: '#DC2626',
+    padding: 6,
+    borderRadius: 20,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 8,
+    alignSelf: 'flex-end',
+    width: 32,
+    height: 32,
+    borderWidth: 1,
+    borderColor: '#B91C1C',
   },
   userDeleteButtonText: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
   },
 });
