@@ -1,97 +1,127 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# RoofRoot - Real Estate Platform
 
-# Getting Started
+A React Native mobile application for real estate management with automatic backend connectivity detection.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## 🚀 Quick Start
 
-## Step 1: Start Metro
+### Prerequisites
+- Node.js (v16 or higher)
+- React Native development environment
+- Google Cloud Storage account
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
-
-To start the Metro dev server, run the following command from the root of your React Native project:
-
-```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+### 1. Install Dependencies
+```bash
+npm install
+cd ios && bundle install && bundle exec pod install && cd ..
 ```
 
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+### 2. Start Backend Server
+```bash
+cd backend && npm install && npm start
 ```
 
-### iOS
+### 3. Run the App
+```bash
+# iOS
+npx react-native run-ios
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+# Android
+npx react-native run-android
 ```
 
-Then, and every time you update your native dependencies, run:
+## 🔧 Automatic IP Detection
 
-```sh
-bundle exec pod install
+The app features an intelligent automatic IP detection system that eliminates manual configuration:
+
+- **Zero Configuration**: No manual IP updates required
+- **Network Agnostic**: Works across different WiFi networks
+- **Device Smart**: Automatically detects iOS/Android, Physical/Simulator
+- **Fallback System**: Multiple fallback mechanisms ensure connectivity
+
+### How It Works
+1. Backend server automatically detects its IP address
+2. React Native app fetches the IP on startup
+3. App uses the correct URL for each device type
+4. Fallback to hardcoded IP if auto-detection fails
+
+## 📱 Device Support
+
+| Device Type | URL | Auto-Detection |
+|-------------|-----|----------------|
+| iOS Simulator | `localhost:3000` | Not needed |
+| iOS Physical | Auto-detected IP | ✅ |
+| Android Emulator | `10.0.2.2:3000` | Not needed |
+| Android Physical | Auto-detected IP | ✅ |
+
+## 🧪 Testing Connectivity
+
+Use the BackendTest component to:
+- View device information and detected API URL
+- Test backend connectivity
+- Debug network issues
+- Verify auto-detection
+
+## 📚 Documentation
+
+- [Backend Setup Guide](./BACKEND_SETUP.md) - Complete backend setup instructions
+- [Automatic IP Detection Architecture](./AUTOMATIC_IP_DETECTION_ARCHITECTURE.md) - Detailed architecture documentation
+- [Debug Connectivity](./DEBUG_CONNECTIVITY.md) - Network troubleshooting guide
+- [Production Deployment](./PRODUCTION_DEPLOYMENT.md) - Production setup guide
+
+## 🛠️ Development
+
+### Project Structure
+```
+RoofRoot/
+├── src/
+│   ├── components/     # React Native components
+│   ├── screens/        # App screens
+│   ├── firebase/       # Firebase configuration
+│   ├── config/         # API configuration
+│   └── context/        # React context providers
+├── backend/            # Node.js/Express server
+├── ios/               # iOS native code
+└── android/           # Android native code
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+### Key Features
+- **Real Estate Listings**: Create and manage property listings
+- **Image Upload**: Upload and manage listing images
+- **User Authentication**: Sign up, sign in, and user management
+- **Role-Based Access**: Admin and customer roles
+- **Firebase Integration**: Backend services and storage
+- **Google Cloud Storage**: Image storage and management
 
-```sh
-# Using npm
-npm run ios
+## 🔍 Troubleshooting
 
-# OR using Yarn
-yarn ios
+### Find Your Computer's IP
+```bash
+./find-ip.sh
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+### Test Backend Connectivity
+```bash
+curl http://localhost:3000/health
+```
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+### Common Issues
+1. **Backend not running**: Start with `cd backend && npm start`
+2. **Network issues**: Ensure devices are on same WiFi network
+3. **Auto-detection fails**: Check BackendTest component for details
 
-## Step 3: Modify your app
+## 🚀 Production
 
-Now that you have successfully run the app, let's make changes!
+For production deployment:
+1. Update `src/config/apiConfig.ts` with production backend URL
+2. Deploy backend to your preferred hosting service
+3. Configure Firebase for production environment
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+## 📄 License
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+This project is licensed under the MIT License.
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+---
 
-## Congratulations! :tada:
+This is a [React Native](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+For more information about React Native, visit the [React Native Website](https://reactnative.dev).

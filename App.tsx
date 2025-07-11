@@ -18,6 +18,7 @@ import { NavigationContainer, NavigationContainerRef } from '@react-navigation/n
 import { createStackNavigator } from '@react-navigation/stack';
 import AppHeader from './src/components/AppHeader';
 import { ThemeProvider } from './src/context/ThemeContext';
+import { initializeApiUrl } from './src/config/apiConfig';
 
 const Stack = createStackNavigator();
 
@@ -29,8 +30,32 @@ function App() {
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
   useEffect(() => {
-    checkAuthState();
+    initializeApp();
   }, []);
+
+  const initializeApp = async () => {
+    try {
+      // Progressive loading: Show app immediately with cached IP
+      console.log('🚀 Starting app with progressive loading...');
+      
+      // Set loading to false immediately to show the app
+      setLoading(false);
+      
+      // Run IP detection in background (non-blocking)
+      console.log('🔄 Starting background IP detection...');
+      initializeApiUrl().then(newApiUrl => {
+        console.log('✅ Background IP detection completed:', newApiUrl);
+      }).catch(error => {
+        console.error('❌ Background IP detection failed:', error);
+      });
+      
+      // Check auth state (also non-blocking since app is already shown)
+      await checkAuthState();
+    } catch (error) {
+      console.error('Error in app initialization:', error);
+      // App is already shown, just log the error
+    }
+  };
 
   const checkAuthState = async () => {
     try {

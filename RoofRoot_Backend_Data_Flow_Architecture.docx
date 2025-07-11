@@ -1,0 +1,546 @@
+# RoofRoot React Native App - Backend Data Flow Architecture
+
+## Table of Contents
+1. [High-Level Data Flow Architecture](#high-level-data-flow-architecture)
+2. [Automatic IP Detection & Optimization Architecture](#automatic-ip-detection--optimization-architecture)
+3. [Data Flow Breakdown by Functionality](#data-flow-breakdown-by-functionality)
+4. [Frontend-Backend Interaction Patterns](#frontend-backend-interaction-patterns)
+5. [Conditional UI Rendering Logic](#conditional-ui-rendering-logic)
+6. [Key Architectural Features](#key-architectural-features)
+
+---
+
+## 1. High-Level Data Flow Architecture
+
+### System Overview
+The RoofRoot React Native app utilizes Firebase as the backend infrastructure with the following core services:
+
+- **Firebase Authentication**: Email-based sign-in/sign-up
+- **Firestore Database**: Users and Listings collections
+- **Firebase Storage**: Image storage via Google Cloud Storage
+- **Real-time Listeners**: Authentication state and data updates
+- **Automatic IP Detection**: Smart backend connectivity management
+
+### Architecture Diagram
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   React Native  │    │   Firebase      │    │   Google Cloud  │
+│   Frontend      │◄──►│   Services      │◄──►│   Storage       │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Navigation    │    │   Firestore     │    │   Image Files   │
+│   & State Mgmt  │    │   Collections   │    │   (via Backend) │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Auto IP       │    │   Express       │    │   Smart Cache   │
+│   Detection     │◄──►│   Backend       │◄──►│   (24h)         │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### Core Firebase Services Integration
+- **Firebase Authentication**: User sign-up/sign-in with email/password
+- **Firestore Database**: Users and Listings collections
+- **Firebase Storage**: Image uploads (via Google Cloud Storage backend)
+- **Real-time Listeners**: Auth state changes and data updates
+- **Automatic IP Detection**: Smart backend connectivity with caching
+
+---
+
+## 2. Automatic IP Detection & Optimization Architecture
+
+### Overview
+The RoofRoot app implements an intelligent automatic IP detection system that eliminates manual configuration and provides instant app startup through progressive loading, smart caching, and optimized network requests.
+
+### Architecture Components
+
+#### A. Backend Server (server.js)
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Express Backend                         │
+├─────────────────────────────────────────────────────────────┤
+│  IP Detection Logic:                                      │
+│  ├─ OS Network Interface Scan                             │
+│  ├─ Non-internal IPv4 Address Detection                   │
+│  └─ Server IP Caching                                     │
+├─────────────────────────────────────────────────────────────┤
+│  Endpoints:                                               │
+│  ├─ GET /server-info → Returns detected IP                │
+│  ├─ GET /health → Health check                            │
+│  ├─ GET /ping → Debug endpoint                            │
+│  └─ POST /upload-image → Image upload                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### B. React Native App (apiConfig.ts)
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    API Configuration                       │
+├─────────────────────────────────────────────────────────────┤
+│  Device Detection:                                        │
+│  ├─ iOS Simulator → localhost:3000                       │
+│  ├─ iOS Physical → Auto-detected IP                       │
+│  ├─ Android Emulator → 10.0.2.2:3000                     │
+│  └─ Android Physical → Auto-detected IP                   │
+├─────────────────────────────────────────────────────────────┤
+│  Smart Caching:                                           │
+│  ├─ 24-hour cache duration                               │
+│  ├─ Automatic cache invalidation                          │
+│  └─ Fallback to hardcoded IP                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Optimization Methods Combined
+
+#### 1. Progressive Loading (Primary)
+```
+App Startup Flow:
+┌─────────────────────────────────────────────────────────────┐
+│  App Start (0.5s) → Show UI with cached IP               │
+│  Background IP Detection (0-2s) → Update if needed       │
+│  User can interact immediately                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 2. Reduced Timeouts (Secondary)
+```
+Network Request Optimization:
+┌─────────────────────────────────────────────────────────────┐
+│  Parallel Requests:                                       │
+│  ├─ localhost:3000/server-info (2s timeout)              │
+│  ├─ 10.0.2.2:3000/server-info (2s timeout)              │
+│  └─ 127.0.0.1:3000/server-info (2s timeout)             │
+│  Total time: 0-2s instead of 15s                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 3. Smart Caching (Tertiary)
+```
+Cache Management:
+┌─────────────────────────────────────────────────────────────┐
+│  Cache Structure:                                         │
+│  ├─ IP Address                                           │
+│  ├─ Timestamp                                            │
+│  └─ Expiration (24 hours)                                │
+├─────────────────────────────────────────────────────────────┤
+│  Cache Behavior:                                          │
+│  ├─ First launch: Detect and cache                        │
+│  ├─ Subsequent launches: Use cached IP                    │
+│  └─ Cache expired: Re-detect and update                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow for IP Detection
+
+#### Server Startup Flow
+```
+1. Backend server starts
+2. OS network interfaces scanned
+3. First non-internal IPv4 address detected
+4. Server IP cached and exposed via /server-info endpoint
+```
+
+#### App Startup Flow
+```
+1. React Native app starts
+2. Device type detected (iOS/Android, Physical/Simulator)
+3. App attempts to fetch server IP from multiple URLs in parallel
+4. Server responds with actual IP address
+5. App caches IP and uses it for all API calls
+```
+
+#### Fallback Mechanism
+```
+If auto-detection fails:
+1. App uses hardcoded fallback IP (192.168.0.249)
+2. User can manually update IP in apiConfig.ts
+3. App continues to work with manual configuration
+```
+
+### Performance Timeline
+
+#### First Launch
+```
+Timeline: 0.5s → 2s → 24h cache
+├─ App shows immediately (0.5s)
+├─ Background detection (0-2s)
+├─ IP cached for 24 hours
+└─ User can interact immediately
+```
+
+#### Subsequent Launches
+```
+Timeline: 0.5s → instant
+├─ App shows immediately (0.5s)
+├─ Uses cached IP (no network requests)
+├─ No detection needed
+└─ Instant startup experience
+```
+
+#### Network Changes
+```
+Timeline: 0.5s → 2s → cache update
+├─ App shows immediately (0.5s)
+├─ Background detection finds new IP (0-2s)
+├─ Cache updated automatically
+└─ App continues working seamlessly
+```
+
+### Device-Specific Behavior
+
+#### iOS Simulator
+- **URL**: `http://localhost:3000`
+- **Detection**: Not needed (direct localhost)
+- **Behavior**: Immediate connection
+
+#### iOS Physical Device
+- **URL**: `http://{auto-detected-ip}:3000`
+- **Detection**: Fetches from server on startup
+- **Behavior**: Automatic IP discovery
+
+#### Android Emulator
+- **URL**: `http://10.0.2.2:3000`
+- **Detection**: Not needed (Android emulator localhost)
+- **Behavior**: Immediate connection
+
+#### Android Physical Device
+- **URL**: `http://{auto-detected-ip}:3000`
+- **Detection**: Fetches from server on startup
+- **Behavior**: Automatic IP discovery
+
+### Implementation Details
+
+#### Caching Strategy
+```typescript
+interface CachedIP {
+  ip: string;
+  timestamp: number;
+  expiresAt: number;
+}
+
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+```
+
+#### Error Handling
+```typescript
+try {
+  // Attempt auto-detection with parallel requests
+  const serverIP = await fetchServerIP();
+  return `http://${serverIP}:3000`;
+} catch (error) {
+  // Fallback to hardcoded IP
+  return 'http://192.168.0.249:3000';
+}
+```
+
+#### Network Timeout
+- **Timeout**: 2 seconds per URL attempt
+- **Retry Strategy**: Parallel requests to multiple URLs
+- **Graceful Degradation**: Fallback to hardcoded IP
+
+### Benefits
+
+#### For Developers
+- **Zero Configuration**: No manual IP updates required
+- **Network Agnostic**: Works across different WiFi networks
+- **Time Saving**: Eliminates manual configuration steps
+- **Error Reduction**: Reduces configuration-related bugs
+
+#### For Users
+- **Seamless Experience**: App works immediately after setup
+- **Network Flexibility**: Works when switching WiFi networks
+- **Reliability**: Multiple fallback mechanisms ensure connectivity
+
+#### For Teams
+- **Consistency**: Same behavior across different development machines
+- **Documentation**: Self-documenting through logging
+- **Maintainability**: Centralized configuration logic
+
+### Testing & Debugging
+
+#### BackendTest Component
+The `BackendTest` component provides comprehensive testing capabilities:
+
+1. **Device Information Display**
+   - Shows current platform (iOS/Android)
+   - Shows device type (Physical/Simulator)
+   - Shows detected API URL
+
+2. **Connectivity Testing**
+   - Tests backend connectivity
+   - Shows detailed error information
+   - Validates auto-detection
+
+3. **Debug Information**
+   - Logs all detection attempts
+   - Shows fallback behavior
+   - Displays network configuration
+
+#### Manual Testing
+```bash
+# Test server info endpoint
+curl http://localhost:3000/server-info
+
+# Test health endpoint
+curl http://localhost:3000/health
+
+# Test ping endpoint
+curl http://localhost:3000/ping
+```
+
+### Future Enhancements
+
+#### Potential Improvements
+1. **Network Change Detection**: Automatically update IP when network changes
+2. **Multiple Server Support**: Support for multiple backend servers
+3. **Advanced Fallback**: More sophisticated fallback strategies
+4. **Metrics**: Track detection success rates
+5. **Configuration UI**: Allow manual IP override in app settings
+
+#### Scalability Considerations
+- **Microservices**: Architecture supports multiple backend services
+- **Load Balancing**: Can be extended for load balancer support
+- **Service Discovery**: Foundation for service discovery implementation
+
+---
+
+## 3. Data Flow Breakdown by Functionality
+
+### A. User Authentication Flow
+
+#### Sign-Up Process
+```
+Frontend → Firebase Auth → Firestore Users Collection
+└─ Email/Password → Create Auth User → Store User Data (role: 'customer')
+```
+
+**Steps:**
+1. User enters email, password, and name
+2. Frontend calls `authService.signUpWithDetails()`
+3. Firebase Auth creates user account
+4. User data stored in Firestore with role 'customer'
+5. User redirected to CustomerHomePage
+
+#### Sign-In Process
+```
+Frontend → Firebase Auth → Firestore → Role Check → Navigation
+└─ Email/Password → Authenticate → Fetch User Data → Route by Role
+```
+
+**Steps:**
+1. User enters email and password
+2. Frontend calls `authService.signIn()`
+3. Firebase Auth authenticates user
+4. User data fetched from Firestore
+5. App routes based on user role (admin/customer)
+
+#### Auth State Management
+```
+Firebase Auth → Auth Listener → App State → Conditional UI
+└─ Real-time Auth Changes → Update User State → Show/Hide Components
+```
+
+### B. Role-Based Access Control
+
+#### User Data Structure
+```json
+{
+  "uid": "string",
+  "name": "string", 
+  "email": "string",
+  "role": "customer" | "admin",
+  "createdAt": "timestamp"
+}
+```
+
+#### Role-Based Routing
+- **Customer Role** → CustomerHomePage (view listings only)
+- **Admin Role** → AdminHomePage (manage listings + users)
+
+### C. Listing Management Flow
+
+#### Listing Creation (Admin Only)
+```
+Frontend Form → Image Upload → Google Cloud Storage → Firestore
+└─ Listing Data + Images → Backend API → Storage Bucket → Database
+```
+
+**Steps:**
+1. Admin fills listing form with details and images
+2. Images uploaded to Google Cloud Storage via backend API
+3. Listing data stored in Firestore with image URLs
+4. UI updates to show new listing
+
+#### Listing Display
+```
+Firestore → Frontend → Customer/Admin Views
+└─ Real-time Data → Conditional Rendering → Role-based Actions
+```
+
+#### Listing Updates/Deletion
+```
+Admin Interface → Firestore → Image Cleanup → UI Update
+└─ Form Submission → Database Update → Storage Cleanup → Refresh
+```
+
+### D. Image Upload Flow
+
+#### Image Selection
+```
+React Native Image Picker → Local URI → Backend API
+```
+
+#### Upload Process
+```
+Frontend → Backend API → Google Cloud Storage → Download URL
+```
+
+#### Storage Integration
+```
+Google Cloud Storage → Signed URLs → Firestore Image URLs
+└─ Secure Upload → Public Access → Database Reference
+```
+
+---
+
+## 4. Frontend-Backend Interaction Patterns
+
+### Service Layer Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Frontend Components                     │
+├─────────────────────────────────────────────────────────────┤
+│  SignInScreen  │  CustomerHomePage  │  AdminHomePage      │
+├─────────────────────────────────────────────────────────────┤
+│                    Firebase Services                       │
+├─────────────────────────────────────────────────────────────┤
+│  authService   │  realEstateService │  adminService       │
+├─────────────────────────────────────────────────────────────┤
+│                    Firebase Backend                        │
+├─────────────────────────────────────────────────────────────┤
+│  Authentication │  Firestore DB     │  Google Cloud Storage│
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow Patterns
+
+#### 1. Authentication Flow
+```
+Component → authService → Firebase Auth → Firestore → User State
+```
+
+#### 2. Listing Operations
+```
+Component → realEstateService → Firestore → UI Update
+```
+
+#### 3. Image Operations
+```
+Component → googleCloudStorage → Backend API → Storage → URL → Firestore
+```
+
+#### 4. Admin Operations
+```
+Component → adminService → Firestore → User Management
+```
+
+### Key Service Functions
+
+#### Authentication Service (`authService`)
+- `signUpWithDetails()`: Create new user account
+- `signIn()`: Authenticate existing user
+- `getUserData()`: Fetch user data from Firestore
+- `signOut()`: Log out current user
+- `deleteUserAccount()`: Remove user account
+
+#### Real Estate Service (`realEstateService`)
+- `createListing()`: Add new listing to Firestore
+- `getAllListings()`: Fetch all listings
+- `updateListing()`: Modify existing listing
+- `deleteListing()`: Remove listing from database
+- `removeListingImage()`: Delete image from storage
+
+#### Admin Service (`adminService`)
+- `getAllUsers()`: Fetch all users for admin view
+- `deleteUserCompletely()`: Remove user from system
+- `createAdminUser()`: Create admin account
+
+#### Google Cloud Storage Service
+- `uploadImageToGCS()`: Upload image via backend API
+- `getImageDownloadURL()`: Get public URL for image
+- `deleteImageFromGCS()`: Remove image from storage
+
+---
+
+## 5. Conditional UI Rendering Logic
+
+### Role-Based UI Components
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    App.tsx (Router)                        │
+├─────────────────────────────────────────────────────────────┤
+│  userData?.role === 'admin' ? AdminHomePage : CustomerHomePage  │
+├─────────────────────────────────────────────────────────────┤
+│                    Component Logic                         │
+├─────────────────────────────────────────────────────────────┤
+│  AdminHomePage:                                           │
+│  ├─ Listing Management (CRUD)                             │
+│  ├─ User Management                                       │
+│  └─ Admin-only Actions                                    │
+│                                                           │
+│  CustomerHomePage:                                        │
+│  ├─ View Listings Only                                    │
+│  ├─ Listing Details                                       │
+│  └─ Profile Management                                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Authentication State Management
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Auth State Flow                         │
+├─────────────────────────────────────────────────────────────┤
+│  Loading State → Auth Check → User Data → Role Routing    │
+├─────────────────────────────────────────────────────────────┤
+│  Conditional Rendering:                                   │
+│  ├─ userData === null → Sign In/Up Options               │
+│  ├─ userData?.role === 'admin' → Admin Interface         │
+│  └─ userData?.role === 'customer' → Customer Interface   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 6. Key Architectural Features
+
+### Progressive Loading Architecture
+- **Instant App Startup**: App shows immediately with cached IP
+- **Background Detection**: IP detection runs without blocking UI
+- **Smart Caching**: 24-hour cache reduces network requests
+- **Fallback System**: Multiple fallback mechanisms ensure reliability
+
+### Network Optimization
+- **Parallel Requests**: Multiple URLs tried simultaneously
+- **Reduced Timeouts**: 2-second timeouts instead of 5-second
+- **Smart Retry**: Intelligent fallback to hardcoded IPs
+- **Error Handling**: Comprehensive error handling and logging
+
+### Device Intelligence
+- **Platform Detection**: Automatic iOS/Android detection
+- **Device Type Detection**: Physical device vs simulator/emulator
+- **URL Optimization**: Device-specific URL selection
+- **Performance Tuning**: Optimized for each device type
+
+### Development Experience
+- **Zero Configuration**: No manual IP updates required
+- **Network Agnostic**: Works across different WiFi networks
+- **Debug Tools**: Comprehensive testing and debugging components
+- **Documentation**: Self-documenting architecture with detailed logging 
