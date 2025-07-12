@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { authService, realEstateService, RealEstateListing } from '../firebase';
 import auth from '@react-native-firebase/auth';
@@ -7,6 +7,52 @@ import { useTheme } from '../context/ThemeContext';
 interface CustomerHomePageProps {
   onListingDetails: (listing: RealEstateListing) => void;
 }
+
+// Optimized Listing Card Component
+const ListingCard = React.memo(({ 
+  listing, 
+  onPress, 
+  colors 
+}: { 
+  listing: RealEstateListing; 
+  onPress: () => void; 
+  colors: any;
+}) => {
+  const handlePress = useCallback(() => {
+    onPress();
+  }, [onPress]);
+
+  return (
+    <TouchableOpacity 
+      style={[styles.listingCard, { backgroundColor: colors.secondary, shadowColor: colors.cardShadow }]}
+      onPress={handlePress}
+      activeOpacity={0.7}
+    >
+      {listing.images && listing.images.length > 0 ? (
+        <Image 
+          source={{ uri: listing.images[0] }} 
+          style={styles.listingImage}
+          // Performance optimizations
+          fadeDuration={0}
+          progressiveRenderingEnabled={true}
+          resizeMethod="resize"
+        />
+      ) : (
+        <View style={[styles.placeholderImage, { backgroundColor: colors.tertiary }]}>
+          <Text style={styles.placeholderText}>🖼️</Text>
+          <Text style={[styles.placeholderMessage, { color: colors.textSecondary }]}>Image coming soon</Text>
+        </View>
+      )}
+      <Text style={[styles.listingTitle, { color: colors.textPrimary }]}>{listing.title}</Text>
+      <Text style={[styles.listingDescription, { color: colors.textSecondary }]}>{listing.description}</Text>
+      <Text style={[styles.listingPrice, { color: colors.iconPrimary }]}>${listing.price.toLocaleString()}</Text>
+      {listing.location && (
+        <Text style={[styles.listingLocation, { color: colors.textSecondary }]}>📍 {listing.location}</Text>
+      )}
+      <Text style={[styles.tapHint, { color: colors.textSecondary }]}>Tap to view details</Text>
+    </TouchableOpacity>
+  );
+});
 
 const CustomerHomePage: React.FC<CustomerHomePageProps> = ({ onListingDetails }) => {
   const { colors } = useTheme();
@@ -20,7 +66,7 @@ const CustomerHomePage: React.FC<CustomerHomePageProps> = ({ onListingDetails })
     setupAuthListener();
   }, []);
 
-  const setupAuthListener = () => {
+  const setupAuthListener = useCallback(() => {
     const unsubscribe = auth().onAuthStateChanged(async (user) => {
       if (user) {
         // User is signed in
@@ -38,9 +84,9 @@ const CustomerHomePage: React.FC<CustomerHomePageProps> = ({ onListingDetails })
 
     // Cleanup subscription on unmount
     return () => unsubscribe();
-  };
+  }, []);
 
-  const loadListings = async () => {
+  const loadListings = useCallback(async () => {
     try {
       const allListings = await realEstateService.getAllListings();
       setListings(allListings);
@@ -50,7 +96,46 @@ const CustomerHomePage: React.FC<CustomerHomePageProps> = ({ onListingDetails })
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const handleListingPress = useCallback((listing: RealEstateListing) => {
+    onListingDetails(listing);
+  }, [onListingDetails]);
+
+  // Memoize the listings content to prevent unnecessary re-renders
+  const memoizedListingsContent = useMemo(() => {
+    if (loading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading listings...</Text>
+        </View>
+      );
+    }
+
+    if (listings.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Properties Available</Text>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            Check back soon for new listings!
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.listingsContainer}>
+        {listings.map((listing) => (
+          <ListingCard
+            key={listing.id}
+            listing={listing}
+            onPress={() => handleListingPress(listing)}
+            colors={colors}
+          />
+        ))}
+      </View>
+    );
+  }, [listings, loading, colors, handleListingPress]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.primary }]}>
@@ -58,46 +143,13 @@ const CustomerHomePage: React.FC<CustomerHomePageProps> = ({ onListingDetails })
         <Text style={[styles.screenTitle, { color: colors.textPrimary }]}>Available Properties ({listings.length})</Text>
       </View>
 
-      <ScrollView style={styles.content}>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading listings...</Text>
-          </View>
-        ) : listings.length > 0 ? (
-          <View style={styles.listingsContainer}>
-            {listings.map((listing) => (
-              <TouchableOpacity 
-                key={listing.id} 
-                style={[styles.listingCard, { backgroundColor: colors.secondary, shadowColor: colors.cardShadow }]}
-                onPress={() => onListingDetails(listing)}
-                activeOpacity={0.7}
-              >
-                {listing.images && listing.images.length > 0 ? (
-                  <Image source={{ uri: listing.images[0] }} style={styles.listingImage} />
-                ) : (
-                  <View style={[styles.placeholderImage, { backgroundColor: colors.tertiary }]}>
-                    <Text style={styles.placeholderText}>🖼️</Text>
-                    <Text style={[styles.placeholderMessage, { color: colors.textSecondary }]}>Image coming soon</Text>
-                  </View>
-                )}
-                <Text style={[styles.listingTitle, { color: colors.textPrimary }]}>{listing.title}</Text>
-                <Text style={[styles.listingDescription, { color: colors.textSecondary }]}>{listing.description}</Text>
-                <Text style={[styles.listingPrice, { color: colors.iconPrimary }]}>${listing.price.toLocaleString()}</Text>
-                {listing.location && (
-                  <Text style={[styles.listingLocation, { color: colors.textSecondary }]}>📍 {listing.location}</Text>
-                )}
-                <Text style={[styles.tapHint, { color: colors.textSecondary }]}>Tap to view details</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        ) : (
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Properties Available</Text>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              Check back soon for new listings!
-            </Text>
-          </View>
-        )}
+      <ScrollView 
+        style={styles.content}
+        // Performance optimizations
+        removeClippedSubviews={true}
+        showsVerticalScrollIndicator={false}
+      >
+        {memoizedListingsContent}
       </ScrollView>
     </View>
   );

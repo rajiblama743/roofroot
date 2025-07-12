@@ -103,6 +103,36 @@ function App() {
           initialRouteName={userData?.role === 'admin' ? 'AdminHome' : 'CustomerHome'}
           screenOptions={{
             headerShown: false,
+            // Performance optimizations for smooth transitions
+            cardStyleInterpolator: ({ current, layouts }) => ({
+              cardStyle: {
+                transform: [
+                  {
+                    translateX: current.progress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [layouts.screen.width, 0],
+                    }),
+                  },
+                ],
+              },
+            }),
+            // Optimize transition timing
+            transitionSpec: {
+              open: {
+                animation: 'timing',
+                config: {
+                  duration: 300,
+                  easing: require('react-native').Easing.out(require('react-native').Easing.cubic),
+                },
+              },
+              close: {
+                animation: 'timing',
+                config: {
+                  duration: 300,
+                  easing: require('react-native').Easing.in(require('react-native').Easing.cubic),
+                },
+              },
+            },
           }}
         >
         <Stack.Screen name="SignIn">

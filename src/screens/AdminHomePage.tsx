@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Modal } from 'react-native';
 import { authService, realEstateService, RealEstateListing } from '../firebase';
 import { adminService, AdminUserData } from '../firebase/adminService';
@@ -8,6 +8,132 @@ import { useTheme } from '../context/ThemeContext';
 interface AdminHomePageProps {
   onListingDetails: (listing: RealEstateListing) => void;
 }
+
+// Optimized Listing Card Component for Admin
+const AdminListingCard = React.memo(({ 
+  listing, 
+  onPress, 
+  onEdit, 
+  onDelete, 
+  colors 
+}: { 
+  listing: RealEstateListing; 
+  onPress: () => void; 
+  onEdit: () => void; 
+  onDelete: () => void; 
+  colors: any;
+}) => {
+  const handlePress = useCallback(() => {
+    onPress();
+  }, [onPress]);
+
+  const handleEdit = useCallback((e: any) => {
+    e.stopPropagation();
+    onEdit();
+  }, [onEdit]);
+
+  const handleDelete = useCallback((e: any) => {
+    e.stopPropagation();
+    onDelete();
+  }, [onDelete]);
+
+  return (
+    <TouchableOpacity 
+      key={listing.id} 
+      style={[styles.listingCard, { backgroundColor: colors.secondary, shadowColor: colors.cardShadow }]}
+      onPress={handlePress}
+      activeOpacity={0.7}
+    >
+      {listing.images && listing.images.length > 0 ? (
+        <Image 
+          source={{ uri: listing.images[0] }} 
+          style={styles.listingImage}
+          // Performance optimizations
+          fadeDuration={0}
+          progressiveRenderingEnabled={true}
+          resizeMethod="resize"
+        />
+      ) : (
+        <View style={[styles.placeholderImage, { backgroundColor: colors.tertiary }]}>
+          <Text style={styles.placeholderText}>🖼️</Text>
+          <Text style={[styles.placeholderMessage, { color: colors.textSecondary }]}>Image coming soon</Text>
+        </View>
+      )}
+      <View style={styles.listingHeader}>
+        <Text style={[styles.listingTitle, { color: colors.textPrimary }]}>{listing.title}</Text>
+        <Text style={[styles.listingPrice, { color: colors.iconPrimary }]}>${listing.price.toLocaleString()}</Text>
+      </View>
+      <Text style={[styles.listingDescription, { color: colors.textSecondary }]}>{listing.description}</Text>
+      {listing.location && (
+        <Text style={[styles.listingLocation, { color: colors.textSecondary }]}>📍 {listing.location}</Text>
+      )}
+      <View style={styles.listingActions}>
+        <TouchableOpacity 
+          style={[styles.editButton, { backgroundColor: colors.iconPrimary }]} 
+          onPress={handleEdit}
+        >
+          <Text style={styles.editButtonText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.deleteButton, { backgroundColor: colors.buttonDanger }]} 
+          onPress={handleDelete}
+        >
+          <Text style={styles.deleteButtonText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+// Optimized User Card Component
+const UserCard = React.memo(({ 
+  user, 
+  onPress, 
+  onDelete, 
+  colors 
+}: { 
+  user: AdminUserData; 
+  onPress: () => void; 
+  onDelete: () => void; 
+  colors: any;
+}) => {
+  const handlePress = useCallback(() => {
+    onPress();
+  }, [onPress]);
+
+  const handleDelete = useCallback((e: any) => {
+    e.stopPropagation();
+    onDelete();
+  }, [onDelete]);
+
+  return (
+    <TouchableOpacity 
+      key={user.uid} 
+      style={[styles.userCard, { backgroundColor: colors.secondary, shadowColor: colors.cardShadow }]}
+      onPress={handlePress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.userHeader}>
+        <Text style={[styles.userName, { color: colors.textPrimary }]}>{user.name}</Text>
+        <Text style={[styles.userRole, { color: colors.iconPrimary, backgroundColor: colors.tertiary }, user.role === 'admin' && { color: colors.buttonDanger, backgroundColor: colors.tertiary }]}>
+          {user.role}
+        </Text>
+      </View>
+      <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user.email}</Text>
+      <Text style={[styles.userCreated, { color: colors.textSecondary }]}>
+        Created: {user.createdAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
+      </Text>
+      {user.role !== 'admin' && (
+        <TouchableOpacity 
+          style={[styles.userDeleteButton, { backgroundColor: colors.buttonDanger, borderColor: colors.buttonDanger }]} 
+          onPress={handleDelete}
+        >
+          <Text style={styles.userDeleteButtonText}>🗑️</Text>
+        </TouchableOpacity>
+      )}
+    </TouchableOpacity>
+  );
+});
 
 const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
   const { colors } = useTheme();
@@ -31,7 +157,7 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
     loadUserData();
   }, []);
 
-  const loadListings = async () => {
+  const loadListings = useCallback(async () => {
     try {
       const allListings = await realEstateService.getAllListings();
       setListings(allListings);
@@ -41,9 +167,9 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const allUsers = await adminService.getAllUsers();
       setUsers(allUsers);
@@ -51,9 +177,9 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
       console.error('Error loading users:', error);
       Alert.alert('Error', 'Failed to load users');
     }
-  };
+  }, []);
 
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     const currentUser = authService.getCurrentUser();
     if (currentUser) {
       const userData = await authService.getUserData(currentUser.uid);
@@ -61,21 +187,21 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
         setUserName(userData.name);
       }
     }
-  };
+  }, []);
 
-  const handleCreateListing = () => {
+  const handleCreateListing = useCallback(() => {
     setFormMode('create');
     setEditingListing(null);
     setShowListingForm(true);
-  };
+  }, []);
 
-  const handleEditListing = (listing: RealEstateListing) => {
+  const handleEditListing = useCallback((listing: RealEstateListing) => {
     setFormMode('edit');
     setEditingListing(listing);
     setShowListingForm(true);
-  };
+  }, []);
 
-  const handleDeleteListing = async (listing: RealEstateListing) => {
+  const handleDeleteListing = useCallback(async (listing: RealEstateListing) => {
     if (!listing.id) return;
     
     Alert.alert(
@@ -98,9 +224,9 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
         },
       ]
     );
-  };
+  }, [loadListings]);
 
-  const handleListingSubmit = async (listingData: Omit<RealEstateListing, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleListingSubmit = useCallback(async (listingData: Omit<RealEstateListing, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       if (formMode === 'create') {
         await realEstateService.createListing(listingData);
@@ -114,9 +240,9 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
       console.error('Error saving listing:', error);
       Alert.alert('Error', 'Failed to save listing');
     }
-  };
+  }, [formMode, editingListing, loadListings]);
 
-  const handleDeleteUser = async (user: AdminUserData) => {
+  const handleDeleteUser = useCallback(async (user: AdminUserData) => {
     // Prevent deletion of admin users
     if (user.role === 'admin') {
       Alert.alert('Error', 'Admin users cannot be deleted');
@@ -147,7 +273,83 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
         },
       ]
     );
-  };
+  }, [loadUsers]);
+
+  const handleListingPress = useCallback((listing: RealEstateListing) => {
+    onListingDetails(listing);
+  }, [onListingDetails]);
+
+  const handleUserPress = useCallback((user: AdminUserData) => {
+    setSelectedUser(user);
+    setShowUserModal(true);
+  }, []);
+
+  // Memoize the content to prevent unnecessary re-renders
+  const memoizedContent = useMemo(() => {
+    if (loading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
+        </View>
+      );
+    }
+
+    if (activeTab === 'listings') {
+      if (listings.length > 0) {
+        return (
+          <View style={styles.listingsContainer}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Current Listings ({listings.length})</Text>
+            {listings.map((listing) => (
+              <AdminListingCard
+                key={listing.id}
+                listing={listing}
+                onPress={() => handleListingPress(listing)}
+                onEdit={() => handleEditListing(listing)}
+                onDelete={() => handleDeleteListing(listing)}
+                colors={colors}
+              />
+            ))}
+          </View>
+        );
+      } else {
+        return (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Listings Available</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              Create your first listing to get started!
+            </Text>
+          </View>
+        );
+      }
+    } else {
+      // Users tab
+      if (users.length > 0) {
+        return (
+          <View style={styles.usersContainer}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Registered Users ({users.length})</Text>
+            {users.map((user) => (
+              <UserCard
+                key={user.uid}
+                user={user}
+                onPress={() => handleUserPress(user)}
+                onDelete={() => handleDeleteUser(user)}
+                colors={colors}
+              />
+            ))}
+          </View>
+        );
+      } else {
+        return (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Users Available</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              No users have registered yet.
+            </Text>
+          </View>
+        );
+      }
+    }
+  }, [loading, activeTab, listings, users, colors, handleListingPress, handleEditListing, handleDeleteListing, handleUserPress, handleDeleteUser]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.primary }]}>
@@ -186,105 +388,13 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
         </View>
       )}
 
-      <ScrollView style={styles.content}>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
-          </View>
-        ) : activeTab === 'listings' ? (
-          listings.length > 0 ? (
-            <View style={styles.listingsContainer}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Current Listings ({listings.length})</Text>
-              {listings.map((listing) => (
-                <TouchableOpacity 
-                  key={listing.id} 
-                  style={[styles.listingCard, { backgroundColor: colors.secondary, shadowColor: colors.cardShadow }]}
-                  onPress={() => onListingDetails(listing)}
-                  activeOpacity={0.7}
-                >
-                  {listing.images && listing.images.length > 0 ? (
-                    <Image source={{ uri: listing.images[0] }} style={styles.listingImage} />
-                  ) : (
-                    <View style={[styles.placeholderImage, { backgroundColor: colors.tertiary }]}>
-                      <Text style={styles.placeholderText}>🖼️</Text>
-                      <Text style={[styles.placeholderMessage, { color: colors.textSecondary }]}>Image coming soon</Text>
-                    </View>
-                  )}
-                  <View style={styles.listingHeader}>
-                    <Text style={[styles.listingTitle, { color: colors.textPrimary }]}>{listing.title}</Text>
-                    <Text style={[styles.listingPrice, { color: colors.iconPrimary }]}>${listing.price.toLocaleString()}</Text>
-                  </View>
-                  <Text style={[styles.listingDescription, { color: colors.textSecondary }]}>{listing.description}</Text>
-                  {listing.location && (
-                    <Text style={[styles.listingLocation, { color: colors.textSecondary }]}>📍 {listing.location}</Text>
-                  )}
-                  <View style={styles.listingActions}>
-                    <TouchableOpacity 
-                      style={[styles.editButton, { backgroundColor: colors.iconPrimary }]} 
-                      onPress={(e) => { e.stopPropagation(); handleEditListing(listing); }}
-                    >
-                      <Text style={styles.editButtonText}>Edit</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.deleteButton, { backgroundColor: colors.buttonDanger }]} 
-                      onPress={(e) => { e.stopPropagation(); handleDeleteListing(listing); }}
-                    >
-                      <Text style={styles.deleteButtonText}>Delete</Text>
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Listings Available</Text>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                Create your first listing to get started!
-              </Text>
-            </View>
-          )
-        ) : (
-          // Users tab
-          users.length > 0 ? (
-            <View style={styles.usersContainer}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Registered Users ({users.length})</Text>
-              {users.map((user) => (
-                <TouchableOpacity 
-                  key={user.uid} 
-                  style={[styles.userCard, { backgroundColor: colors.secondary, shadowColor: colors.cardShadow }]}
-                  onPress={() => { setSelectedUser(user); setShowUserModal(true); }}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.userHeader}>
-                    <Text style={[styles.userName, { color: colors.textPrimary }]}>{user.name}</Text>
-                    <Text style={[styles.userRole, { color: colors.iconPrimary, backgroundColor: colors.tertiary }, user.role === 'admin' && { color: colors.buttonDanger, backgroundColor: colors.tertiary }]}>
-                      {user.role}
-                    </Text>
-                  </View>
-                  <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user.email}</Text>
-                  <Text style={[styles.userCreated, { color: colors.textSecondary }]}>
-                    Created: {user.createdAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
-                  </Text>
-                  {user.role !== 'admin' && (
-                    <TouchableOpacity 
-                      style={[styles.userDeleteButton, { backgroundColor: colors.buttonDanger, borderColor: colors.buttonDanger }]} 
-                      onPress={(e) => { e.stopPropagation(); handleDeleteUser(user); }}
-                    >
-                      <Text style={styles.userDeleteButtonText}>🗑️</Text>
-                    </TouchableOpacity>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Users Available</Text>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                No users have registered yet.
-              </Text>
-            </View>
-          )
-        )}
+      <ScrollView 
+        style={styles.content}
+        // Performance optimizations
+        removeClippedSubviews={true}
+        showsVerticalScrollIndicator={false}
+      >
+        {memoizedContent}
       </ScrollView>
 
       <ListingForm
