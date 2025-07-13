@@ -342,6 +342,14 @@ const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, on
             <Text style={[styles.description, { color: colors.textSecondary }]}>{listing.description}</Text>
           </View>
 
+          {/* Agent Information */}
+          {listing.agentName && (
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>👤 Agent</Text>
+              <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{listing.agentName}</Text>
+            </View>
+          )}
+
           {/* Created Date */}
           {listing.createdAt && (
             <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>

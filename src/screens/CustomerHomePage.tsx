@@ -49,6 +49,9 @@ const ListingCard = React.memo(({
       {listing.location && (
         <Text style={[styles.listingLocation, { color: colors.textSecondary }]}>📍 {listing.location}</Text>
       )}
+      {listing.agentName && (
+        <Text style={[styles.agentName, { color: colors.textSecondary }]}>Agent: {listing.agentName}</Text>
+      )}
       <Text style={[styles.tapHint, { color: colors.textSecondary }]}>Tap to view details</Text>
     </TouchableOpacity>
   );
@@ -228,6 +231,11 @@ const styles = StyleSheet.create({
   listingLocation: {
     fontSize: 12,
     marginBottom: 4,
+  },
+  agentName: {
+    fontSize: 12,
+    marginBottom: 4,
+    fontStyle: 'italic',
   },
   tapHint: {
     fontSize: 12,

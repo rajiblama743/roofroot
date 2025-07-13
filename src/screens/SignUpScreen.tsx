@@ -178,6 +178,21 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUpSuccess, onBack, na
                 {loading ? 'Creating Account...' : 'Create Account'}
               </Text>
             </TouchableOpacity>
+
+            <View style={styles.dividerContainer}>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <Text style={[styles.dividerText, { color: colors.textSecondary }]}>or</Text>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.agentRequestButton, { borderColor: colors.border }]} 
+              onPress={() => navigation?.navigate('AgentRequestSignup')}
+            >
+              <Text style={[styles.agentRequestButtonText, { color: colors.textPrimary }]}>
+                Request an Agency Account
+              </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -322,6 +337,30 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontSize: 14,
+    marginHorizontal: 16,
+  },
+  agentRequestButton: {
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    backgroundColor: 'transparent',
+  },
+  agentRequestButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

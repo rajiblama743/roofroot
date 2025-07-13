@@ -4,6 +4,8 @@ import { authService, realEstateService, RealEstateListing } from '../firebase';
 import { adminService, AdminUserData } from '../firebase/adminService';
 import ListingForm from '../components/ListingForm';
 import { useTheme } from '../context/ThemeContext';
+import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
 
 interface AdminHomePageProps {
   onListingDetails: (listing: RealEstateListing) => void;
@@ -48,7 +50,6 @@ const AdminListingCard = React.memo(({
         <Image 
           source={{ uri: listing.images[0] }} 
           style={styles.listingImage}
-          // Performance optimizations
           fadeDuration={0}
           progressiveRenderingEnabled={true}
           resizeMethod="resize"
@@ -66,6 +67,9 @@ const AdminListingCard = React.memo(({
       <Text style={[styles.listingDescription, { color: colors.textSecondary }]}>{listing.description}</Text>
       {listing.location && (
         <Text style={[styles.listingLocation, { color: colors.textSecondary }]}>📍 {listing.location}</Text>
+      )}
+      {listing.agentName && (
+        <Text style={[styles.agentName, { color: colors.textSecondary }]}>Agent: {listing.agentName}</Text>
       )}
       <View style={styles.listingActions}>
         <TouchableOpacity 
@@ -135,13 +139,78 @@ const UserCard = React.memo(({
   );
 });
 
+// Agent Request Card Component
+const AgentRequestCard = React.memo(({ 
+  request, 
+  onApprove, 
+  onReject, 
+  colors 
+}: { 
+  request: any; 
+  onApprove: () => void; 
+  onReject: () => void; 
+  colors: any;
+}) => {
+  const handleApprove = useCallback((e: any) => {
+    e.stopPropagation();
+    onApprove();
+  }, [onApprove]);
+
+  const handleReject = useCallback((e: any) => {
+    e.stopPropagation();
+    onReject();
+  }, [onReject]);
+
+  return (
+    <View style={[styles.requestCard, { backgroundColor: colors.secondary, shadowColor: colors.cardShadow }]}>
+      <View style={styles.requestHeader}>
+        <Text style={[styles.requestName, { color: colors.textPrimary }]}>{request.name}</Text>
+        <Text style={[styles.requestStatus, { 
+          color: request.status === 'pending' ? colors.iconPrimary : 
+                 request.status === 'approved' ? colors.buttonSuccess : colors.buttonDanger,
+          backgroundColor: colors.tertiary 
+        }]}>
+          {request.status}
+        </Text>
+      </View>
+      <Text style={[styles.requestEmail, { color: colors.textSecondary }]}>{request.email}</Text>
+      <Text style={[styles.requestPhone, { color: colors.textSecondary }]}>{request.phone}</Text>
+      {request.agency && (
+        <Text style={[styles.requestAgency, { color: colors.textSecondary }]}>Agency: {request.agency}</Text>
+      )}
+      {request.companyDescription && (
+        <Text style={[styles.requestExperience, { color: colors.textSecondary }]}>Company Description: {request.companyDescription}</Text>
+      )}
+      <Text style={[styles.requestDate, { color: colors.textSecondary }]}>
+        Requested: {request.timestamp?.toDate?.()?.toLocaleDateString() || 'Unknown'}
+      </Text>
+      {request.status === 'pending' && (
+        <View style={styles.requestActions}>
+          <TouchableOpacity 
+            style={[styles.approveButton, { backgroundColor: colors.buttonSuccess }]} 
+            onPress={handleApprove}
+          >
+            <Text style={styles.approveButtonText}>Approve</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.rejectButton, { backgroundColor: colors.buttonDanger }]} 
+            onPress={handleReject}
+          >
+            <Text style={styles.rejectButtonText}>Reject</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+});
+
 const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
   const { colors } = useTheme();
   const [listings, setListings] = useState<RealEstateListing[]>([]);
   const [users, setUsers] = useState<AdminUserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'listings' | 'users'>('listings');
+  const [activeTab, setActiveTab] = useState<'listings' | 'users' | 'agentRequests'>('listings');
   
   // Listing form states
   const [showListingForm, setShowListingForm] = useState(false);
@@ -150,10 +219,15 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
 
   const [selectedUser, setSelectedUser] = useState<AdminUserData | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  
+  // Agent requests states
+  const [agentRequests, setAgentRequests] = useState<any[]>([]);
+  const [loadingAgentRequests, setLoadingAgentRequests] = useState(false);
 
   useEffect(() => {
     loadListings();
     loadUsers();
+    loadAgentRequests();
     loadUserData();
   }, []);
 
@@ -189,10 +263,24 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
     }
   }, []);
 
-  const handleCreateListing = useCallback(() => {
-    setFormMode('create');
-    setEditingListing(null);
-    setShowListingForm(true);
+  const loadAgentRequests = useCallback(async () => {
+    try {
+      setLoadingAgentRequests(true);
+      const querySnapshot = await firestore().collection('agentRequests').orderBy('timestamp', 'desc').get();
+      const requests: any[] = [];
+      querySnapshot.forEach((doc: any) => {
+        requests.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      setAgentRequests(requests);
+    } catch (error) {
+      console.error('Error loading agent requests:', error);
+      Alert.alert('Error', 'Failed to load agent requests');
+    } finally {
+      setLoadingAgentRequests(false);
+    }
   }, []);
 
   const handleEditListing = useCallback((listing: RealEstateListing) => {
@@ -228,10 +316,7 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
 
   const handleListingSubmit = useCallback(async (listingData: Omit<RealEstateListing, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      if (formMode === 'create') {
-        await realEstateService.createListing(listingData);
-        Alert.alert('Success', 'Listing created successfully');
-      } else if (editingListing?.id) {
+      if (formMode === 'edit' && editingListing?.id) {
         await realEstateService.updateListing(editingListing.id, listingData);
         Alert.alert('Success', 'Listing updated successfully');
       }
@@ -275,6 +360,52 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
     );
   }, [loadUsers]);
 
+  const handleApproveAgentRequest = useCallback(async (request: any) => {
+    try {
+      // Create user in Firebase Auth using the stored password
+      const userCredential = await auth().createUserWithEmailAndPassword(request.email, request.password);
+      const user = userCredential.user;
+
+      // Create user document in Firestore with agent role
+      await firestore().collection('users').doc(user.uid).set({
+        name: request.name,
+        email: request.email,
+        role: 'agent',
+        createdAt: firestore.FieldValue.serverTimestamp()
+      });
+
+      // Update agent request status to approved
+      await firestore().collection('agentRequests').doc(request.id).update({
+        status: 'approved',
+        approvedAt: firestore.FieldValue.serverTimestamp(),
+        approvedBy: authService.getCurrentUser()?.uid
+      });
+
+      Alert.alert('Success', `Agent account created for ${request.name}. They can now sign in with their email and password.`);
+      loadAgentRequests();
+    } catch (error) {
+      console.error('Error approving agent request:', error);
+      Alert.alert('Error', 'Failed to approve agent request');
+    }
+  }, [loadAgentRequests]);
+
+  const handleRejectAgentRequest = useCallback(async (request: any) => {
+    try {
+      // Update agent request status to declined
+      await firestore().collection('agentRequests').doc(request.id).update({
+        status: 'declined',
+        declinedAt: firestore.FieldValue.serverTimestamp(),
+        declinedBy: authService.getCurrentUser()?.uid
+      });
+
+      Alert.alert('Success', `Agent request for ${request.name} has been declined`);
+      loadAgentRequests();
+    } catch (error) {
+      console.error('Error rejecting agent request:', error);
+      Alert.alert('Error', 'Failed to reject agent request');
+    }
+  }, [loadAgentRequests]);
+
   const handleListingPress = useCallback((listing: RealEstateListing) => {
     onListingDetails(listing);
   }, [onListingDetails]);
@@ -298,7 +429,7 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
       if (listings.length > 0) {
         return (
           <View style={styles.listingsContainer}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Current Listings ({listings.length})</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>All Listings ({listings.length})</Text>
             {listings.map((listing) => (
               <AdminListingCard
                 key={listing.id}
@@ -316,12 +447,12 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Listings Available</Text>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              Create your first listing to get started!
+              No listings have been created yet.
             </Text>
           </View>
         );
       }
-    } else {
+    } else if (activeTab === 'users') {
       // Users tab
       if (users.length > 0) {
         return (
@@ -348,14 +479,49 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
           </View>
         );
       }
+    } else {
+      // Agent Requests tab
+      if (loadingAgentRequests) {
+        return (
+          <View style={styles.loadingContainer}>
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading agent requests...</Text>
+          </View>
+        );
+      }
+
+      if (agentRequests.length > 0) {
+        return (
+          <View style={styles.requestsContainer}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Agent Requests ({agentRequests.length})</Text>
+            {agentRequests.map((request) => (
+              <AgentRequestCard
+                key={request.id}
+                request={request}
+                onApprove={() => handleApproveAgentRequest(request)}
+                onReject={() => handleRejectAgentRequest(request)}
+                colors={colors}
+              />
+            ))}
+          </View>
+        );
+      } else {
+        return (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Agent Requests</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              No agent account requests have been submitted.
+            </Text>
+          </View>
+        );
+      }
     }
-  }, [loading, activeTab, listings, users, colors, handleListingPress, handleEditListing, handleDeleteListing, handleUserPress, handleDeleteUser]);
+  }, [loading, loadingAgentRequests, activeTab, listings, users, agentRequests, colors, handleListingPress, handleEditListing, handleDeleteListing, handleUserPress, handleDeleteUser, handleApproveAgentRequest, handleRejectAgentRequest]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.primary }]}>
       <View style={[styles.header, { backgroundColor: colors.secondary, shadowColor: colors.cardShadow }]}>
         <Text style={[styles.title, { color: colors.textPrimary }]}>Admin Dashboard</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Manage Real Estate Listings</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Manage Real Estate Platform</Text>
         {userName && (
           <Text style={[styles.welcomeText, { color: colors.iconPrimary }]}>Welcome, {userName}!</Text>
         )}
@@ -378,19 +544,18 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
             Users ({users.length})
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'agentRequests' && { backgroundColor: colors.iconPrimary }]} 
+          onPress={() => setActiveTab('agentRequests')}
+        >
+          <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'agentRequests' && { color: 'white' }]}>
+            Agent Requests ({agentRequests.length})
+          </Text>
+        </TouchableOpacity>
       </View>
-
-      {activeTab === 'listings' && (
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity style={[styles.createButton, { backgroundColor: colors.buttonSuccess, shadowColor: colors.buttonSuccess }]} onPress={handleCreateListing}>
-            <Text style={styles.createButtonText}>+ Create New Listing</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
       <ScrollView 
         style={styles.content}
-        // Performance optimizations
         removeClippedSubviews={true}
         showsVerticalScrollIndicator={false}
       >
@@ -447,38 +612,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  brandContainer: {
-    alignItems: 'center',
-    paddingVertical: 16,
+  header: {
+    padding: 20,
     paddingTop: 60,
     borderBottomWidth: 1,
   },
-  brandTitle: {
+  title: {
     fontSize: 24,
     fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  brandSlogan: {
-    fontSize: 14,
-    fontWeight: 'normal',
-    opacity: 0.7,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  header: {
-    padding: 20,
-    paddingTop: 20,
-    paddingBottom: 12,
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
@@ -490,55 +632,25 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    marginHorizontal: 20,
-    marginTop: 10,
-    borderRadius: 12,
-    padding: 4,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
   },
   tab: {
     flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
+    marginHorizontal: 4,
     alignItems: 'center',
-  },
-  activeTab: {
-    backgroundColor: '#6366F1',
   },
   tabText: {
     fontSize: 14,
     fontWeight: '600',
   },
-  activeTabText: {
-    color: 'white',
-  },
-  actionsContainer: {
-    padding: 20,
-    paddingBottom: 10,
-  },
-  createButton: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  createButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-
   content: {
     flex: 1,
     padding: 20,
-    paddingTop: 10,
   },
   loadingContainer: {
     flex: 1,
@@ -554,47 +666,11 @@ const styles = StyleSheet.create({
   usersContainer: {
     marginBottom: 20,
   },
-  userCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  userHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    flex: 1,
-  },
-  userRole: {
-    fontSize: 12,
-    fontWeight: '600',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    textTransform: 'uppercase',
-  },
-  adminRole: {
-    color: '#DC2626',
-    backgroundColor: '#FEF2F2',
-  },
-  userEmail: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  userCreated: {
-    fontSize: 12,
+  requestsContainer: {
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
   },
@@ -606,6 +682,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  listingImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  placeholderImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    fontSize: 48,
+    marginBottom: 8,
+  },
+  placeholderMessage: {
+    fontSize: 14,
+    textAlign: 'center',
   },
   listingHeader: {
     flexDirection: 'row',
@@ -629,72 +727,161 @@ const styles = StyleSheet.create({
   },
   listingLocation: {
     fontSize: 12,
-    marginBottom: 12,
-  },
-  listingImage: {
-    width: '100%',
-    height: 180,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    marginBottom: 8,
-  },
-  placeholderImage: {
-    width: '100%',
-    height: 180,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    marginBottom: 8,
-  },
-  placeholderText: {
-    fontSize: 48,
     marginBottom: 4,
-    textAlign: 'center',
   },
-  placeholderMessage: {
-    fontSize: 14,
-    textAlign: 'center',
+  agentName: {
+    fontSize: 12,
+    marginBottom: 12,
+    fontStyle: 'italic',
   },
   listingActions: {
     flexDirection: 'row',
     gap: 8,
   },
-  viewButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    flex: 1,
-    alignItems: 'center',
-  },
-  viewButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
   editButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
     flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
     alignItems: 'center',
   },
   editButtonText: {
     color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '600',
   },
   deleteButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
     flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
     alignItems: 'center',
   },
   deleteButtonText: {
     color: 'white',
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  userCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  userHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  userName: {
+    fontSize: 18,
     fontWeight: 'bold',
+    flex: 1,
+  },
+  userRole: {
+    fontSize: 12,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  userEmail: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  userCreated: {
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  userDeleteButton: {
+    alignSelf: 'flex-end',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  userDeleteButtonText: {
+    color: 'white',
+    fontSize: 16,
+  },
+  requestCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  requestHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  requestName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  requestStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  requestEmail: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  requestPhone: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  requestAgency: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  requestExperience: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  requestDate: {
+    fontSize: 12,
+    marginBottom: 12,
+  },
+  requestActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  approveButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  approveButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  rejectButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  rejectButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
   emptyContainer: {
     flex: 1,
@@ -711,58 +898,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  userActionsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
-  },
-  userViewButton: {
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  userViewButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 14,
-  },
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   userModalContainer: {
-    borderRadius: 16,
-    padding: 24,
-    width: 340,
-    maxWidth: '90%',
-    alignItems: 'flex-start',
+    width: '90%',
+    maxWidth: 400,
+    borderRadius: 12,
+    padding: 20,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
   },
   userModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    width: '100%',
-    paddingRight: 0,
+    marginBottom: 20,
   },
   userModalTitle: {
     fontSize: 20,
-    fontWeight: '700',
-  },
-  userModalLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 8,
-  },
-  userModalValue: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  userModalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 24,
+    fontWeight: 'bold',
   },
   userModalCloseButton: {
     width: 32,
@@ -775,21 +935,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  userDeleteButton: {
-    padding: 6,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    alignSelf: 'flex-end',
-    width: 32,
-    height: 32,
-    borderWidth: 1,
+  userModalLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
   },
-  userDeleteButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
+  userModalValue: {
+    fontSize: 16,
+    marginBottom: 12,
   },
 });
 

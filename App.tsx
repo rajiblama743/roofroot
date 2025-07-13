@@ -9,6 +9,8 @@ import SignUpScreen from './src/screens/SignUpScreen';
 import SignInScreen from './src/screens/SignInScreen';
 import CustomerHomePage from './src/screens/CustomerHomePage';
 import AdminHomePage from './src/screens/AdminHomePage';
+import AgentHomePage from './src/screens/AgentHomePage';
+import AgentRequestSignup from './src/screens/AgentRequestSignup';
 import ListingDetailsScreen from './src/screens/ListingDetailsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SideNav from './src/components/SideNav';
@@ -112,7 +114,10 @@ function App() {
       <NavigationContainer ref={navigationRef}>
         <AppHeader onMenuPress={() => setSideNavVisible(true)} userName={userData?.name} />
         <Stack.Navigator
-          initialRouteName={userData?.role === 'admin' ? 'AdminHome' : 'CustomerHome'}
+          initialRouteName={
+            userData?.role === 'admin' ? 'AdminHome' : 
+            userData?.role === 'agent' ? 'AgentHome' : 'CustomerHome'
+          }
           screenOptions={{
             headerShown: false,
             // Performance optimizations for smooth transitions
@@ -152,6 +157,8 @@ function App() {
             setUserData(userData);
             if (userData.role === 'admin') {
               navigationRef.current?.reset({ index: 0, routes: [{ name: 'AdminHome' as never }] });
+            } else if (userData.role === 'agent') {
+              navigationRef.current?.reset({ index: 0, routes: [{ name: 'AgentHome' as never }] });
             } else {
               navigationRef.current?.reset({ index: 0, routes: [{ name: 'CustomerHome' as never }] });
             }
@@ -175,6 +182,15 @@ function App() {
             setSelectedListing(listing);
             props.navigation.navigate('ListingDetails');
           }} />}
+        </Stack.Screen>
+        <Stack.Screen name="AgentHome">
+          {props => <AgentHomePage {...props} onListingDetails={listing => {
+            setSelectedListing(listing);
+            props.navigation.navigate('ListingDetails');
+          }} />}
+        </Stack.Screen>
+        <Stack.Screen name="AgentRequestSignup">
+          {props => <AgentRequestSignup {...props} onBack={() => props.navigation.goBack()} />}
         </Stack.Screen>
         <Stack.Screen name="ListingDetails">
           {props => <ListingDetailsScreen {...props} listing={selectedListing} onImageRemoved={() => {

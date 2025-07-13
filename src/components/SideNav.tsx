@@ -57,6 +57,8 @@ const SideNav: React.FC<SideNavProps> = ({
     onClose();
     if (userRole === 'admin') {
       navigation.navigate('AdminHome' as never);
+    } else if (userRole === 'agent') {
+      navigation.navigate('AgentHome' as never);
     } else {
       navigation.navigate('CustomerHome' as never);
     }

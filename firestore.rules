@@ -9,15 +9,25 @@ service cloud.firestore {
     // Allow authenticated users to read all listings
     match /listings/{listingId} {
       allow read: if request.auth != null;
-      // Only allow admin users to write listings
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // Allow agents to write their own listings, admins to write all listings
+      allow write: if request.auth != null && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent' && 
+         resource.data.agentId == request.auth.uid)
+      );
     }
     
     // Allow authenticated users to read all images
     match /images/{imageId} {
       allow read: if request.auth != null;
       // Only allow admin users to write images
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Allow agent requests collection - only admins can write, authenticated users can read
+    match /agentRequests/{requestId} {
+      allow read: if request.auth != null;
       allow write: if request.auth != null && 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
