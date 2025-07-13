@@ -85,8 +85,22 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onBack, onSignOut }
     setLoading(true);
     try {
       await authService.deleteUserAccount();
-      Alert.alert('Account Deleted', 'Your account has been successfully deleted.');
-      onSignOut();
+      Alert.alert(
+        'Account Deleted', 
+        'Account successfully deleted.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate to CustomerHome instead of calling onSignOut
+              // since the user is already deleted
+              if (onBack) {
+                onBack();
+              }
+            }
+          }
+        ]
+      );
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to delete account');
     } finally {

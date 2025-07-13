@@ -64,6 +64,11 @@ function App() {
         const userData = await authService.getUserData(currentUser.uid);
         if (userData) {
           setUserData(userData);
+        } else {
+          // User exists in Auth but not in Firestore - this shouldn't happen with our new logic
+          // but we'll handle it gracefully
+          console.warn('User exists in Auth but not in Firestore');
+          setUserData(null);
         }
       } else {
         setUserData(null);
@@ -82,6 +87,13 @@ function App() {
       setUserData(null);
       navigation.reset({ index: 0, routes: [{ name: 'CustomerHome' }] });
     } catch (error) {
+      // If the error is about no current user, this is expected when user is deleted
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'auth/no-current-user') {
+        // User is already deleted, just reset the state and navigate
+        setUserData(null);
+        navigation.reset({ index: 0, routes: [{ name: 'CustomerHome' }] });
+        return;
+      }
       console.error('Error signing out:', error);
     }
   };
@@ -146,7 +158,11 @@ function App() {
           }} />}
         </Stack.Screen>
         <Stack.Screen name="SignUp">
-          {props => <SignUpScreen {...props} onSignUpSuccess={() => props.navigation.replace('CustomerHome')} />}
+          {props => <SignUpScreen {...props} onSignUpSuccess={() => {
+            // After successful signup, check auth state to get user data
+            checkAuthState();
+            props.navigation.replace('CustomerHome');
+          }} />}
         </Stack.Screen>
         <Stack.Screen name="CustomerHome">
           {props => <CustomerHomePage {...props} onListingDetails={listing => {
@@ -170,7 +186,10 @@ function App() {
           }} />}
         </Stack.Screen>
         <Stack.Screen name="Profile">
-          {props => userData ? <ProfileScreen {...props} user={userData} onSignOut={() => handleSignOut(props.navigation)} /> : null}
+          {props => userData ? <ProfileScreen {...props} user={userData} onSignOut={() => handleSignOut(props.navigation)} onBack={() => {
+            setUserData(null);
+            props.navigation.reset({ index: 0, routes: [{ name: 'CustomerHome' }] });
+          }} /> : null}
         </Stack.Screen>
               </Stack.Navigator>
         <SideNav
@@ -189,6 +208,15 @@ function App() {
             authService.signOut().then(() => {
               setUserData(null);
               navigationRef.current?.reset({ index: 0, routes: [{ name: 'CustomerHome' as never }] });
+            }).catch((error) => {
+              // If the error is about no current user, this is expected when user is deleted
+              if (error && typeof error === 'object' && 'code' in error && error.code === 'auth/no-current-user') {
+                // User is already deleted, just reset the state and navigate
+                setUserData(null);
+                navigationRef.current?.reset({ index: 0, routes: [{ name: 'CustomerHome' as never }] });
+                return;
+              }
+              console.error('Error signing out:', error);
             });
           }}
           onProfile={() => {

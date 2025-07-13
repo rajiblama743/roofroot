@@ -29,6 +29,12 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUpSuccess, onBack, na
         return 'Email/password accounts are not enabled. Please contact support.';
       case 'auth/network-request-failed':
         return 'Network error. Please check your internet connection.';
+      case 'firestore/permission-denied':
+        return 'Permission denied. Please check your Firestore security rules.';
+      case 'firestore/document-creation-failed':
+        return 'Failed to create user document. Please try again.';
+      case 'auth/signup-failed':
+        return 'Sign up failed. Please try again.';
       default:
         return 'An error occurred. Please try again.';
     }
@@ -36,26 +42,45 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUpSuccess, onBack, na
 
   const handleSignUp = async () => {
     if (!name || !email || !password) {
-      Alert.alert('All fields are required');
+      Alert.alert('Error', 'All fields are required');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Password must be at least 6 characters long');
+      Alert.alert('Error', 'Password must be at least 6 characters long');
       return;
     }
 
     setLoading(true);
     try {
-      await authService.signUpWithDetails(name, email, password);
-      Alert.alert('Sign up successful!', 'Your account has been created successfully.');
+      console.log('📝 Starting signup process...');
+      const result = await authService.signUpWithDetails(name, email, password);
+      
+      // Clear form
       setName('');
       setEmail('');
       setPassword('');
-      onSignUpSuccess?.();
+      
+      console.log('✅ Signup successful, showing success message');
+      // Show success message
+      Alert.alert(
+        'Account Created Successfully!', 
+        'Your account has been created and you are now signed in.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              console.log('🎉 User acknowledged success, calling onSignUpSuccess');
+              // Call success callback if provided
+              onSignUpSuccess?.();
+            }
+          }
+        ]
+      );
     } catch (error: any) {
+      console.error('❌ Signup error:', error);
       const errorMessage = getErrorMessage(error.code);
-      Alert.alert('Sign up failed', errorMessage);
+      Alert.alert('Sign Up Failed', errorMessage);
       
       // If email already exists, suggest signing in
       if (error.code === 'auth/email-already-in-use') {

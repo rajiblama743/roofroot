@@ -44,8 +44,20 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ onSignInSuccess, onBack, on
     }
     setLoading(true);
     try {
-      await authService.signIn(email, password);
-      // Fetch user data from Firestore
+      const result = await authService.signIn(email, password);
+      
+      // Clear form
+      setEmail('');
+      setPassword('');
+      
+      // Check if we have user data
+      if (result.userData) {
+        // Call onLogin with user data to update app state
+        onLogin?.(result.userData);
+        return;
+      }
+      
+      // Fallback: try to get user data manually
       const currentUser = authService.getCurrentUser();
       if (currentUser) {
         const userData = await authService.getUserData(currentUser.uid);
@@ -54,9 +66,9 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ onSignInSuccess, onBack, on
           return;
         }
       }
+      
+      // If we still don't have user data, show success but don't update state
       Alert.alert('Sign in successful!', 'Welcome back!');
-      setEmail('');
-      setPassword('');
       onSignInSuccess?.();
     } catch (error: any) {
       const errorMessage = getErrorMessage(error.code);
