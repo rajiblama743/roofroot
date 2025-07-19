@@ -66,7 +66,7 @@ const CustomerHomePage: React.FC<CustomerHomePageProps> = ({ onListingDetails })
 
   useEffect(() => {
     loadListings();
-    setupAuthListener();
+    // Remove authentication listener - we want to show public listings without auth
   }, []);
 
   const setupAuthListener = useCallback(() => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Modal, ActivityIndicator } from 'react-native';
 import { authService, realEstateService, RealEstateListing } from '../firebase';
-import { adminService, AdminUserData } from '../firebase/adminService';
+import { adminService, AdminUserData, AgentRequest } from '../firebase/adminService';
 import ListingForm from '../components/ListingForm';
 import { useTheme } from '../context/ThemeContext';
 import firestore from '@react-native-firebase/firestore';
@@ -124,17 +124,19 @@ const UserCard = React.memo(({
         </Text>
       </View>
       <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user.email}</Text>
-      <Text style={[styles.userCreated, { color: colors.textSecondary }]}>
-        Created: {user.createdAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
-      </Text>
-      {user.role !== 'admin' && (
-        <TouchableOpacity 
-          style={[styles.userDeleteButton, { backgroundColor: colors.buttonDanger, borderColor: colors.buttonDanger }]} 
-          onPress={handleDelete}
-        >
-          <Text style={styles.userDeleteButtonText}>🗑️</Text>
-        </TouchableOpacity>
-      )}
+      <View style={styles.userFooter}>
+        <Text style={[styles.userCreated, { color: colors.textSecondary }]}>
+          Created: {user.createdAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
+        </Text>
+        {user.role !== 'admin' && (
+          <TouchableOpacity 
+            style={[styles.userDeleteButton, { backgroundColor: colors.buttonDanger, borderColor: colors.buttonDanger }]} 
+            onPress={handleDelete}
+          >
+            <Text style={styles.userDeleteButtonText}>🗑️</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </TouchableOpacity>
   );
 });
@@ -146,7 +148,7 @@ const AgentRequestCard = React.memo(({
   onReject, 
   colors 
 }: { 
-  request: any; 
+  request: AgentRequest; 
   onApprove: () => void; 
   onReject: () => void; 
   colors: any;
@@ -219,16 +221,117 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
 
   const [selectedUser, setSelectedUser] = useState<AdminUserData | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [approverName, setApproverName] = useState<string>('');
   
-  // Agent requests states
-  const [agentRequests, setAgentRequests] = useState<any[]>([]);
-  const [loadingAgentRequests, setLoadingAgentRequests] = useState(false);
+  // Agent requests states with real-time listeners
+  const [agentRequests, setAgentRequests] = useState<AgentRequest[]>([]);
+  const [loadingAgentRequests, setLoadingAgentRequests] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+
+  // Real-time listeners references
+  const [usersListener, setUsersListener] = useState<any>(null);
+  const [agentRequestsListener, setAgentRequestsListener] = useState<any>(null);
 
   useEffect(() => {
     loadListings();
-    loadUsers();
-    loadAgentRequests();
     loadUserData();
+    loadInitialData();
+    setupRealTimeListeners();
+
+    // Cleanup listeners on unmount
+    return () => {
+      cleanupListeners();
+    };
+  }, []);
+
+  const setupRealTimeListeners = useCallback(() => {
+    console.log('🔧 Setting up real-time listeners...');
+
+    // Setup users real-time listener
+    const usersUnsubscribe = firestore()
+      .collection('users')
+      .orderBy('createdAt', 'desc')
+      .onSnapshot(
+        (snapshot) => {
+          console.log('👥 Users real-time update:', snapshot.docs.length, 'users');
+          const usersData: AdminUserData[] = [];
+          snapshot.forEach((doc) => {
+            usersData.push({
+              uid: doc.id,
+              ...doc.data()
+            } as AdminUserData);
+          });
+          setUsers(usersData);
+        },
+        (error: any) => {
+          console.error('❌ Error in users listener:', error);
+        }
+      );
+
+    // Setup agent requests real-time listener
+    const agentRequestsUnsubscribe = firestore()
+      .collection('agentRequests')
+      .orderBy('timestamp', 'desc')
+      .onSnapshot(
+        (snapshot) => {
+          console.log('📋 Agent requests real-time update:', snapshot.docs.length, 'requests');
+          const requestsData: AgentRequest[] = [];
+          snapshot.forEach((doc) => {
+            requestsData.push({
+              id: doc.id,
+              ...doc.data()
+            } as AgentRequest);
+          });
+          setAgentRequests(requestsData);
+        },
+        (error: any) => {
+          console.error('❌ Error in agent requests listener:', error);
+        }
+      );
+
+    setUsersListener(usersUnsubscribe);
+    setAgentRequestsListener(agentRequestsUnsubscribe);
+  }, []);
+
+  const cleanupListeners = useCallback(() => {
+    console.log('🧹 Cleaning up real-time listeners...');
+    if (usersListener) {
+      usersListener();
+      setUsersListener(null);
+    }
+    if (agentRequestsListener) {
+      agentRequestsListener();
+      setAgentRequestsListener(null);
+    }
+  }, [usersListener, agentRequestsListener]);
+
+  // Load initial data immediately, then set up real-time listeners
+  const loadInitialData = useCallback(async () => {
+    console.log('📥 Loading initial data...');
+    
+    // Load users immediately
+    try {
+      setLoadingUsers(true);
+      const allUsers = await adminService.getAllUsers();
+      console.log('📋 Initial users loaded:', allUsers.length);
+      setUsers(allUsers);
+    } catch (error) {
+      console.error('❌ Failed to load initial users:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+
+    // Load agent requests immediately
+    try {
+      setLoadingAgentRequests(true);
+      const requests = await adminService.getAgentRequests();
+      console.log('📋 Initial agent requests loaded:', requests.length);
+      setAgentRequests(requests);
+    } catch (error) {
+      console.error('❌ Failed to load initial agent requests:', error);
+    } finally {
+      setLoadingAgentRequests(false);
+    }
   }, []);
 
   const loadListings = useCallback(async () => {
@@ -243,16 +346,6 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
     }
   }, []);
 
-  const loadUsers = useCallback(async () => {
-    try {
-      const allUsers = await adminService.getAllUsers();
-      setUsers(allUsers);
-    } catch (error) {
-      console.error('Error loading users:', error);
-      Alert.alert('Error', 'Failed to load users');
-    }
-  }, []);
-
   const loadUserData = useCallback(async () => {
     const currentUser = authService.getCurrentUser();
     if (currentUser) {
@@ -260,26 +353,6 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
       if (userData) {
         setUserName(userData.name);
       }
-    }
-  }, []);
-
-  const loadAgentRequests = useCallback(async () => {
-    try {
-      setLoadingAgentRequests(true);
-      const querySnapshot = await firestore().collection('agentRequests').orderBy('timestamp', 'desc').get();
-      const requests: any[] = [];
-      querySnapshot.forEach((doc: any) => {
-        requests.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-      setAgentRequests(requests);
-    } catch (error) {
-      console.error('Error loading agent requests:', error);
-      Alert.alert('Error', 'Failed to load agent requests');
-    } finally {
-      setLoadingAgentRequests(false);
     }
   }, []);
 
@@ -325,18 +398,36 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
       console.error('Error saving listing:', error);
       Alert.alert('Error', 'Failed to save listing');
     }
-  }, [formMode, editingListing, loadListings]);
+  }, [formMode, editingListing, loadListings, userName]);
+
+  const handleUserPress = useCallback((user: AdminUserData) => {
+    setSelectedUser(user);
+    setShowUserModal(true);
+    
+    // Fetch approver name if this is an agent with approval info
+    if (user.role === 'agent' && user.approvedBy) {
+      firestore().collection('users').doc(user.approvedBy).get()
+        .then((approverDoc) => {
+          if (approverDoc.exists) {
+            const approverData = approverDoc.data();
+            setApproverName(approverData?.name || 'Unknown Admin');
+          } else {
+            setApproverName('Unknown Admin');
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching approver name:', error);
+          setApproverName('Unknown Admin');
+        });
+    } else {
+      setApproverName('');
+    }
+  }, []);
 
   const handleDeleteUser = useCallback(async (user: AdminUserData) => {
-    // Prevent deletion of admin users
-    if (user.role === 'admin') {
-      Alert.alert('Error', 'Admin users cannot be deleted');
-      return;
-    }
-
     Alert.alert(
       'Delete User',
-      `Are you sure you want to delete "${user.name}" (${user.email})?\n\nThis will remove them from Firestore. Firebase Auth deletion requires backend implementation.`,
+      `Are you sure you want to delete ${user.name}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -347,7 +438,7 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
               const result = await adminService.deleteUserCompletely(user.email);
               if (result.success) {
                 Alert.alert('Success', result.message);
-                loadUsers();
+                // No need to reload users - real-time listener will handle the update
               } else {
                 Alert.alert('Error', result.message);
               }
@@ -358,69 +449,57 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
         },
       ]
     );
-  }, [loadUsers]);
+  }, []);
 
-  const handleApproveAgentRequest = useCallback(async (request: any) => {
+  const handleApproveAgentRequest = useCallback(async (request: AgentRequest) => {
     try {
-      // Create user in Firebase Auth using the stored password
-      const userCredential = await auth().createUserWithEmailAndPassword(request.email, request.password);
-      const user = userCredential.user;
-
-      // Create user document in Firestore with agent role
-      await firestore().collection('users').doc(user.uid).set({
-        name: request.name,
-        email: request.email,
-        role: 'agent',
-        createdAt: firestore.FieldValue.serverTimestamp()
-      });
-
-      // Update agent request status to approved
-      await firestore().collection('agentRequests').doc(request.id).update({
-        status: 'approved',
-        approvedAt: firestore.FieldValue.serverTimestamp(),
-        approvedBy: authService.getCurrentUser()?.uid
-      });
-
-      Alert.alert('Success', `Agent account created for ${request.name}. They can now sign in with their email and password.`);
-      loadAgentRequests();
+      console.log('🚀 Approving agent request for:', request.name);
+      
+      const result = await adminService.approveAgentRequest(request.id);
+      
+      if (result.success) {
+        Alert.alert('Success', result.message);
+        // No need to reload agent requests - real-time listener will handle the update
+      } else {
+        Alert.alert('Error', result.message);
+        console.error('Approval failed:', result.error);
+      }
     } catch (error) {
       console.error('Error approving agent request:', error);
       Alert.alert('Error', 'Failed to approve agent request');
     }
-  }, [loadAgentRequests]);
+  }, []);
 
-  const handleRejectAgentRequest = useCallback(async (request: any) => {
+  const handleRejectAgentRequest = useCallback(async (request: AgentRequest) => {
     try {
-      // Update agent request status to declined
-      await firestore().collection('agentRequests').doc(request.id).update({
-        status: 'declined',
-        declinedAt: firestore.FieldValue.serverTimestamp(),
-        declinedBy: authService.getCurrentUser()?.uid
-      });
-
-      Alert.alert('Success', `Agent request for ${request.name} has been declined`);
-      loadAgentRequests();
+      console.log('🚀 Rejecting agent request for:', request.name);
+      
+      const result = await adminService.rejectAgentRequest(request.id);
+      
+      if (result.success) {
+        Alert.alert('Success', result.message);
+        // No need to reload agent requests - real-time listener will handle the update
+      } else {
+        Alert.alert('Error', result.message);
+        console.error('Rejection failed:', result.error);
+      }
     } catch (error) {
       console.error('Error rejecting agent request:', error);
       Alert.alert('Error', 'Failed to reject agent request');
     }
-  }, [loadAgentRequests]);
+  }, []);
 
   const handleListingPress = useCallback((listing: RealEstateListing) => {
     onListingDetails(listing);
   }, [onListingDetails]);
-
-  const handleUserPress = useCallback((user: AdminUserData) => {
-    setSelectedUser(user);
-    setShowUserModal(true);
-  }, []);
 
   // Memoize the content to prevent unnecessary re-renders
   const memoizedContent = useMemo(() => {
     if (loading) {
       return (
         <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
+          <ActivityIndicator size="large" color={colors.iconPrimary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading listings...</Text>
         </View>
       );
     }
@@ -453,7 +532,16 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
         );
       }
     } else if (activeTab === 'users') {
-      // Users tab
+      // Users tab with real-time updates
+      if (loadingUsers) {
+        return (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.iconPrimary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading users...</Text>
+          </View>
+        );
+      }
+
       if (users.length > 0) {
         return (
           <View style={styles.usersContainer}>
@@ -472,7 +560,7 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
       } else {
         return (
           <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Users Available</Text>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Users Yet</Text>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               No users have registered yet.
             </Text>
@@ -480,10 +568,11 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
         );
       }
     } else {
-      // Agent Requests tab
+      // Agent Requests tab with real-time updates
       if (loadingAgentRequests) {
         return (
           <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.iconPrimary} />
             <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading agent requests...</Text>
           </View>
         );
@@ -492,7 +581,7 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
       if (agentRequests.length > 0) {
         return (
           <View style={styles.requestsContainer}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Agent Requests ({agentRequests.length})</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Requests ({agentRequests.length})</Text>
             {agentRequests.map((request) => (
               <AgentRequestCard
                 key={request.id}
@@ -507,7 +596,7 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
       } else {
         return (
           <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Agent Requests</Text>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Pending Requests</Text>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               No agent account requests have been submitted.
             </Text>
@@ -515,7 +604,7 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
         );
       }
     }
-  }, [loading, loadingAgentRequests, activeTab, listings, users, agentRequests, colors, handleListingPress, handleEditListing, handleDeleteListing, handleUserPress, handleDeleteUser, handleApproveAgentRequest, handleRejectAgentRequest]);
+  }, [loading, loadingUsers, loadingAgentRequests, activeTab, listings, users, agentRequests, colors, handleListingPress, handleEditListing, handleDeleteListing, handleDeleteUser, handleApproveAgentRequest, handleRejectAgentRequest]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.primary }]}>
@@ -549,7 +638,7 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
           onPress={() => setActiveTab('agentRequests')}
         >
           <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'agentRequests' && { color: 'white' }]}>
-            Agent Requests ({agentRequests.length})
+            Requests ({agentRequests.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -595,10 +684,39 @@ const AdminHomePage: React.FC<AdminHomePageProps> = ({ onListingDetails }) => {
                 <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{selectedUser.email}</Text>
                 <Text style={[styles.userModalLabel, { color: colors.textSecondary }]}>Role:</Text>
                 <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{selectedUser.role}</Text>
+                {selectedUser.agency && (
+                  <>
+                    <Text style={[styles.userModalLabel, { color: colors.textSecondary }]}>Agency:</Text>
+                    <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{selectedUser.agency}</Text>
+                  </>
+                )}
+                {selectedUser.phone && (
+                  <>
+                    <Text style={[styles.userModalLabel, { color: colors.textSecondary }]}>Phone:</Text>
+                    <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{selectedUser.phone}</Text>
+                  </>
+                )}
+                {selectedUser.companyDescription && (
+                  <>
+                    <Text style={[styles.userModalLabel, { color: colors.textSecondary }]}>Company Description:</Text>
+                    <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{selectedUser.companyDescription}</Text>
+                  </>
+                )}
                 <Text style={[styles.userModalLabel, { color: colors.textSecondary }]}>User ID:</Text>
                 <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{selectedUser.uid}</Text>
-                <Text style={[styles.userModalLabel, { color: colors.textSecondary }]}>Created At:</Text>
-                <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{selectedUser.createdAt?.toDate?.()?.toLocaleString() || 'Unknown'}</Text>
+                {selectedUser.role === 'agent' && selectedUser.approvedBy ? (
+                  <>
+                    <Text style={[styles.userModalLabel, { color: colors.textSecondary }]}>Approved By:</Text>
+                    <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{approverName || selectedUser.approvedBy}</Text>
+                    <Text style={[styles.userModalLabel, { color: colors.textSecondary }]}>Approved At:</Text>
+                    <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{selectedUser.approvedAt?.toDate?.()?.toLocaleString() || selectedUser.createdAt?.toDate?.()?.toLocaleString() || 'Unknown'}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={[styles.userModalLabel, { color: colors.textSecondary }]}>Created At:</Text>
+                    <Text style={[styles.userModalValue, { color: colors.textPrimary }]}>{selectedUser.createdAt?.toDate?.()?.toLocaleString() || 'Unknown'}</Text>
+                  </>
+                )}
               </>
             )}
           </View>
@@ -616,19 +734,23 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
     borderBottomWidth: 1,
+    alignItems: 'center',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     marginBottom: 8,
+    textAlign: 'center',
   },
   welcomeText: {
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -797,16 +919,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 8,
   },
+  userFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   userDeleteButton: {
-    alignSelf: 'flex-end',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    borderWidth: 1,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   userDeleteButtonText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 12,
+    fontWeight: '600',
   },
   requestCard: {
     borderRadius: 12,
@@ -944,6 +1072,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 12,
   },
+
 });
 
 export default AdminHomePage; 

@@ -1,5 +1,6 @@
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import { checkFirebaseInitialization } from './init';
 
 export interface AuthError {
   code: string;
@@ -16,10 +17,22 @@ export interface UserData {
 
 export const authService = {
   /**
+   * Check if Firebase is properly initialized
+   */
+  isFirebaseInitialized(): boolean {
+    return checkFirebaseInitialization();
+  },
+
+  /**
    * Check if an email exists in Firebase Authentication
    */
   async checkEmailExists(email: string): Promise<boolean> {
     try {
+      if (!this.isFirebaseInitialized()) {
+        console.error('Firebase not initialized');
+        return false;
+      }
+      
       const methods = await auth().fetchSignInMethodsForEmail(email);
       return methods.length > 0;
     } catch (error) {
@@ -205,6 +218,25 @@ export const authService = {
   async createMissingUserDocument(userId: string, email: string, name?: string): Promise<UserData> {
     try {
       console.log('🔍 Checking for existing Firestore document for UID:', userId);
+      
+      if (!this.isFirebaseInitialized()) {
+        console.error('Firebase not initialized');
+        throw {
+          code: 'firebase/not-initialized',
+          message: 'Firebase is not properly initialized. Please restart the app.'
+        } as AuthError;
+      }
+      
+      // First, verify the user is properly authenticated
+      const currentUser = auth().currentUser;
+      if (!currentUser || currentUser.uid !== userId) {
+        console.log('⚠️ User not properly authenticated, skipping document creation');
+        throw {
+          code: 'auth/user-not-authenticated',
+          message: 'User is not properly authenticated. Please sign in again.'
+        } as AuthError;
+      }
+      
       const userDoc = await firestore().collection('users').doc(userId).get();
       
       if (userDoc.exists()) {
@@ -241,6 +273,10 @@ export const authService = {
           code: 'firestore/permission-denied',
           message: 'Permission denied. Please check your Firestore security rules.'
         } as AuthError;
+      } else if (error.code === 'auth/user-not-authenticated') {
+        throw error; // Re-throw authentication errors
+      } else if (error.code === 'firebase/not-initialized') {
+        throw error; // Re-throw initialization errors
       } else {
         throw {
           code: 'firestore/document-creation-failed',
@@ -256,29 +292,84 @@ export const authService = {
    */
   async signIn(email: string, password: string): Promise<any> {
     try {
-      console.log('Starting signin process for:', email);
+      console.log('🚀 Starting signin process for:', email);
       
-      const userCredential = await auth().signInWithEmailAndPassword(email, password);
+      // Validate inputs
+      if (!email || !password) {
+        throw {
+          code: 'auth/invalid-input',
+          message: 'Email and password are required.'
+        } as AuthError;
+      }
+
+      // Trim whitespace from email
+      const trimmedEmail = email.trim();
+      
+      console.log('📧 Attempting Firebase Auth signin with email:', trimmedEmail);
+      const userCredential = await auth().signInWithEmailAndPassword(trimmedEmail, password);
       const { user } = userCredential;
-      console.log('Firebase Auth signin successful, UID:', user.uid);
+      console.log('✅ Firebase Auth signin successful, UID:', user.uid);
       
       // Try to get user data from Firestore
-      console.log('Fetching user data from Firestore...');
+      console.log('🔍 Fetching user data from Firestore...');
       let userData = await this.getUserData(user.uid);
       
       // If Firestore document doesn't exist, create it
       if (!userData) {
-        console.log('Firestore document missing for user, creating...');
-        userData = await this.createMissingUserDocument(user.uid, email);
-        console.log('Created missing Firestore document:', userData);
+        console.log('📝 Firestore document missing for user, creating...');
+        userData = await this.createMissingUserDocument(user.uid, trimmedEmail);
+        console.log('✅ Created missing Firestore document:', userData);
       } else {
-        console.log('Found existing Firestore document:', userData);
+        console.log('✅ Found existing Firestore document:', userData);
       }
       
       return { userCredential, userData };
-    } catch (error) {
-      console.error('Error in signIn:', error);
-      throw error as AuthError;
+    } catch (error: any) {
+      console.error('❌ Error in signIn:', error);
+      
+      // Provide specific error handling for common auth issues
+      if (error.code === 'auth/invalid-credential') {
+        throw {
+          code: 'auth/invalid-credential',
+          message: 'Invalid email or password. Please check your credentials and try again.'
+        } as AuthError;
+      } else if (error.code === 'auth/user-not-found') {
+        throw {
+          code: 'auth/user-not-found',
+          message: 'No account found with this email address. Please check your email or create a new account.'
+        } as AuthError;
+      } else if (error.code === 'auth/wrong-password') {
+        throw {
+          code: 'auth/wrong-password',
+          message: 'Incorrect password. Please try again.'
+        } as AuthError;
+      } else if (error.code === 'auth/invalid-email') {
+        throw {
+          code: 'auth/invalid-email',
+          message: 'Please enter a valid email address.'
+        } as AuthError;
+      } else if (error.code === 'auth/user-disabled') {
+        throw {
+          code: 'auth/user-disabled',
+          message: 'This account has been disabled. Please contact support.'
+        } as AuthError;
+      } else if (error.code === 'auth/too-many-requests') {
+        throw {
+          code: 'auth/too-many-requests',
+          message: 'Too many failed attempts. Please try again later.'
+        } as AuthError;
+      } else if (error.code === 'auth/network-request-failed') {
+        throw {
+          code: 'auth/network-request-failed',
+          message: 'Network error. Please check your internet connection.'
+        } as AuthError;
+      } else {
+        // For any other errors, provide a generic message
+        throw {
+          code: error.code || 'auth/unknown-error',
+          message: error.message || 'An error occurred during sign in. Please try again.'
+        } as AuthError;
+      }
     }
   },
 
@@ -290,6 +381,23 @@ export const authService = {
     try {
       console.log('Getting user data for UID:', userId);
       
+      if (!this.isFirebaseInitialized()) {
+        console.error('Firebase not initialized');
+        return null;
+      }
+      
+      // First, verify the user is properly authenticated
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        console.log('No current user authenticated, returning null');
+        return null;
+      }
+      
+      if (currentUser.uid !== userId) {
+        console.log('UID mismatch, returning null');
+        return null;
+      }
+      
       const userDoc = await firestore().collection('users').doc(userId).get();
       if (userDoc.exists()) {
         console.log('Found existing Firestore document');
@@ -299,16 +407,10 @@ export const authService = {
         } as UserData;
       }
       
-      console.log('Firestore document does not exist, checking if user is current user...');
+      console.log('Firestore document does not exist, creating missing document...');
       // Document doesn't exist, try to create it
-      const currentUser = auth().currentUser;
-      if (currentUser && currentUser.uid === userId) {
-        console.log('Creating missing Firestore document for existing user');
-        return await this.createMissingUserDocument(userId, currentUser.email || '');
-      }
+      return await this.createMissingUserDocument(userId, currentUser.email || '');
       
-      console.log('No current user or UID mismatch, returning null');
-      return null;
     } catch (error: any) {
       console.error('Error getting user data:', error);
       
@@ -323,6 +425,12 @@ export const authService = {
             console.error('Failed to create missing user document:', createError);
           }
         }
+      }
+      
+      // For authentication errors, just return null instead of throwing
+      if (error.code === 'auth/user-not-authenticated') {
+        console.log('User not authenticated, returning null');
+        return null;
       }
       
       return null;
@@ -405,6 +513,142 @@ export const authService = {
     } catch (error) {
       console.error('Error deleting user account:', error);
       throw error as AuthError;
+    }
+  },
+
+  /**
+   * Debug method to test Firebase connectivity and auth setup
+   */
+  async testFirebaseConnection(): Promise<{
+    firebaseInitialized: boolean;
+    authAvailable: boolean;
+    firestoreAvailable: boolean;
+    currentUser: any;
+  }> {
+    try {
+      const firebaseInitialized = this.isFirebaseInitialized();
+      const authAvailable = !!auth();
+      const firestoreAvailable = !!firestore();
+      const currentUser = auth().currentUser;
+      
+      console.log('🔍 Firebase Connection Test Results:');
+      console.log('  - Firebase Initialized:', firebaseInitialized);
+      console.log('  - Auth Available:', authAvailable);
+      console.log('  - Firestore Available:', firestoreAvailable);
+      console.log('  - Current User:', currentUser ? currentUser.uid : 'None');
+      
+      return {
+        firebaseInitialized,
+        authAvailable,
+        firestoreAvailable,
+        currentUser
+      };
+    } catch (error) {
+      console.error('❌ Firebase connection test failed:', error);
+      return {
+        firebaseInitialized: false,
+        authAvailable: false,
+        firestoreAvailable: false,
+        currentUser: null
+      };
+    }
+  },
+
+  /**
+   * Update the current user's role
+   */
+  async updateUserRole(newRole: 'customer' | 'admin' | 'agent'): Promise<void> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        throw {
+          code: 'auth/no-user',
+          message: 'No user is currently signed in'
+        } as AuthError;
+      }
+
+      await firestore().collection('users').doc(currentUser.uid).update({ role: newRole });
+      console.log('✅ User role updated to:', newRole);
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      throw error as AuthError;
+    }
+  },
+
+  /**
+   * Test admin account access and provide debugging information
+   */
+  async testAdminAccount(email: string): Promise<{
+    authExists: boolean;
+    firestoreExists: boolean;
+    role: string | null;
+    error: string | null;
+  }> {
+    try {
+      console.log('🔍 Testing admin account access for:', email);
+      
+      // Check if user exists in Firebase Auth
+      const authExists = await this.checkEmailExists(email);
+      console.log('  - Auth exists:', authExists);
+      
+      if (!authExists) {
+        return {
+          authExists: false,
+          firestoreExists: false,
+          role: null,
+          error: 'User not found in Firebase Authentication'
+        };
+      }
+      
+      // Try to get user data from Firestore
+      let firestoreExists = false;
+      let role = null;
+      
+      try {
+        // First, we need to sign in to access Firestore data
+        // This is a test sign-in that we'll clean up
+        const testCredential = await auth().signInWithEmailAndPassword(email, 'test-password');
+        console.log('  - Test sign-in successful, UID:', testCredential.user.uid);
+        
+        // Get user data from Firestore
+        const userDoc = await firestore().collection('users').doc(testCredential.user.uid).get();
+        if (userDoc.exists()) {
+          firestoreExists = true;
+          const userData = userDoc.data();
+          role = userData?.role || null;
+          console.log('  - Firestore exists:', firestoreExists);
+          console.log('  - Role:', role);
+        }
+        
+        // Sign out the test user
+        await auth().signOut();
+        console.log('  - Test user signed out');
+        
+      } catch (signInError: any) {
+        console.log('  - Test sign-in failed:', signInError.code);
+        return {
+          authExists: true,
+          firestoreExists: false,
+          role: null,
+          error: `Authentication failed: ${signInError.code}`
+        };
+      }
+      
+      return {
+        authExists,
+        firestoreExists,
+        role,
+        error: null
+      };
+      
+    } catch (error: any) {
+      console.error('❌ Error testing admin account:', error);
+      return {
+        authExists: false,
+        firestoreExists: false,
+        role: null,
+        error: error.message || 'Unknown error'
+      };
     }
   }
 }; 

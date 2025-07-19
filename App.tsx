@@ -14,6 +14,7 @@ import AgentRequestSignup from './src/screens/AgentRequestSignup';
 import ListingDetailsScreen from './src/screens/ListingDetailsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SideNav from './src/components/SideNav';
+import ErrorBoundary from './src/components/ErrorBoundary';
 import { authService, UserData } from './src/firebase';
 import 'react-native-gesture-handler';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
@@ -51,8 +52,9 @@ function App() {
         console.error('❌ Background IP detection failed:', error);
       });
       
-      // Check auth state (also non-blocking since app is already shown)
-      await checkAuthState();
+      // Don't check auth state on app load - let user browse listings without authentication
+      // Authentication will only be checked when user explicitly signs in
+      console.log('✅ App initialized - public listings available without authentication');
     } catch (error) {
       console.error('Error in app initialization:', error);
       // App is already shown, just log the error
@@ -110,141 +112,143 @@ function App() {
   }
 
   return (
-    <ThemeProvider>
-      <NavigationContainer ref={navigationRef}>
-        <AppHeader onMenuPress={() => setSideNavVisible(true)} userName={userData?.name} />
-        <Stack.Navigator
-          initialRouteName={
-            userData?.role === 'admin' ? 'AdminHome' : 
-            userData?.role === 'agent' ? 'AgentHome' : 'CustomerHome'
-          }
-          screenOptions={{
-            headerShown: false,
-            // Performance optimizations for smooth transitions
-            cardStyleInterpolator: ({ current, layouts }) => ({
-              cardStyle: {
-                transform: [
-                  {
-                    translateX: current.progress.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [layouts.screen.width, 0],
-                    }),
+    <ErrorBoundary>
+      <ThemeProvider>
+        <NavigationContainer ref={navigationRef}>
+          <AppHeader onMenuPress={() => setSideNavVisible(true)} userName={userData?.name} />
+          <Stack.Navigator
+            initialRouteName={
+              userData?.role === 'admin' ? 'AdminHome' : 
+              userData?.role === 'agent' ? 'AgentHome' : 'CustomerHome'
+            }
+            screenOptions={{
+              headerShown: false,
+              // Performance optimizations for smooth transitions
+              cardStyleInterpolator: ({ current, layouts }) => ({
+                cardStyle: {
+                  transform: [
+                    {
+                      translateX: current.progress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [layouts.screen.width, 0],
+                      }),
+                    },
+                  ],
+                },
+              }),
+              // Optimize transition timing
+              transitionSpec: {
+                open: {
+                  animation: 'timing',
+                  config: {
+                    duration: 300,
+                    easing: require('react-native').Easing.out(require('react-native').Easing.cubic),
                   },
-                ],
-              },
-            }),
-            // Optimize transition timing
-            transitionSpec: {
-              open: {
-                animation: 'timing',
-                config: {
-                  duration: 300,
-                  easing: require('react-native').Easing.out(require('react-native').Easing.cubic),
+                },
+                close: {
+                  animation: 'timing',
+                  config: {
+                    duration: 300,
+                    easing: require('react-native').Easing.in(require('react-native').Easing.cubic),
+                  },
                 },
               },
-              close: {
-                animation: 'timing',
-                config: {
-                  duration: 300,
-                  easing: require('react-native').Easing.in(require('react-native').Easing.cubic),
-                },
-              },
-            },
-          }}
-        >
-        <Stack.Screen name="SignIn">
-          {props => <SignInScreen {...props} onLogin={userData => {
-            setUserData(userData);
-            if (userData.role === 'admin') {
-              navigationRef.current?.reset({ index: 0, routes: [{ name: 'AdminHome' as never }] });
-            } else if (userData.role === 'agent') {
-              navigationRef.current?.reset({ index: 0, routes: [{ name: 'AgentHome' as never }] });
-            } else {
-              navigationRef.current?.reset({ index: 0, routes: [{ name: 'CustomerHome' as never }] });
-            }
-          }} />}
-        </Stack.Screen>
-        <Stack.Screen name="SignUp">
-          {props => <SignUpScreen {...props} onSignUpSuccess={() => {
-            // After successful signup, check auth state to get user data
-            checkAuthState();
-            props.navigation.replace('CustomerHome');
-          }} />}
-        </Stack.Screen>
-        <Stack.Screen name="CustomerHome">
-          {props => <CustomerHomePage {...props} onListingDetails={listing => {
-            setSelectedListing(listing);
-            props.navigation.navigate('ListingDetails');
-          }} />}
-        </Stack.Screen>
-        <Stack.Screen name="AdminHome">
-          {props => <AdminHomePage {...props} onListingDetails={listing => {
-            setSelectedListing(listing);
-            props.navigation.navigate('ListingDetails');
-          }} />}
-        </Stack.Screen>
-        <Stack.Screen name="AgentHome">
-          {props => <AgentHomePage {...props} onListingDetails={listing => {
-            setSelectedListing(listing);
-            props.navigation.navigate('ListingDetails');
-          }} />}
-        </Stack.Screen>
-        <Stack.Screen name="AgentRequestSignup">
-          {props => <AgentRequestSignup {...props} onBack={() => props.navigation.goBack()} />}
-        </Stack.Screen>
-        <Stack.Screen name="ListingDetails">
-          {props => <ListingDetailsScreen {...props} listing={selectedListing} onImageRemoved={() => {
-            // Refresh the listing data when an image is removed
-            if (selectedListing) {
-              // This will trigger a re-render with updated listing data
-              setSelectedListing({ ...selectedListing });
-            }
-          }} />}
-        </Stack.Screen>
-        <Stack.Screen name="Profile">
-          {props => userData ? <ProfileScreen {...props} user={userData} onSignOut={() => handleSignOut(props.navigation)} onBack={() => {
-            setUserData(null);
-            props.navigation.reset({ index: 0, routes: [{ name: 'CustomerHome' }] });
-          }} /> : null}
-        </Stack.Screen>
-              </Stack.Navigator>
-        <SideNav
-          visible={sideNavVisible}
-          onClose={() => setSideNavVisible(false)}
-          onSignIn={() => {
-            setSideNavVisible(false);
-            navigationRef.current?.navigate('SignIn' as never);
-          }}
-          onSignUp={() => {
-            setSideNavVisible(false);
-            navigationRef.current?.navigate('SignUp' as never);
-          }}
-          onSignOut={() => {
-            setSideNavVisible(false);
-            authService.signOut().then(() => {
+            }}
+          >
+          <Stack.Screen name="SignIn">
+            {props => <SignInScreen {...props} onLogin={userData => {
+              setUserData(userData);
+              if (userData.role === 'admin') {
+                navigationRef.current?.reset({ index: 0, routes: [{ name: 'AdminHome' as never }] });
+              } else if (userData.role === 'agent') {
+                navigationRef.current?.reset({ index: 0, routes: [{ name: 'AgentHome' as never }] });
+              } else {
+                navigationRef.current?.reset({ index: 0, routes: [{ name: 'CustomerHome' as never }] });
+              }
+            }} />}
+          </Stack.Screen>
+          <Stack.Screen name="SignUp">
+            {props => <SignUpScreen {...props} onSignUpSuccess={async () => {
+              // After successful signup, check auth state to get user data
+              await checkAuthState();
+              props.navigation.replace('CustomerHome');
+            }} />}
+          </Stack.Screen>
+          <Stack.Screen name="CustomerHome">
+            {props => <CustomerHomePage {...props} onListingDetails={listing => {
+              setSelectedListing(listing);
+              props.navigation.navigate('ListingDetails');
+            }} />}
+          </Stack.Screen>
+          <Stack.Screen name="AdminHome">
+            {props => <AdminHomePage {...props} onListingDetails={listing => {
+              setSelectedListing(listing);
+              props.navigation.navigate('ListingDetails');
+            }} />}
+          </Stack.Screen>
+          <Stack.Screen name="AgentHome">
+            {props => <AgentHomePage {...props} onListingDetails={listing => {
+              setSelectedListing(listing);
+              props.navigation.navigate('ListingDetails');
+            }} />}
+          </Stack.Screen>
+          <Stack.Screen name="AgentRequestSignup">
+            {props => <AgentRequestSignup {...props} onBack={() => props.navigation.goBack()} />}
+          </Stack.Screen>
+          <Stack.Screen name="ListingDetails">
+            {props => <ListingDetailsScreen {...props} listing={selectedListing} onImageRemoved={() => {
+              // Refresh the listing data when an image is removed
+              if (selectedListing) {
+                // This will trigger a re-render with updated listing data
+                setSelectedListing({ ...selectedListing });
+              }
+            }} />}
+          </Stack.Screen>
+          <Stack.Screen name="Profile">
+            {props => userData ? <ProfileScreen {...props} user={userData} onSignOut={() => handleSignOut(props.navigation)} onBack={() => {
               setUserData(null);
-              navigationRef.current?.reset({ index: 0, routes: [{ name: 'CustomerHome' as never }] });
-            }).catch((error) => {
-              // If the error is about no current user, this is expected when user is deleted
-              if (error && typeof error === 'object' && 'code' in error && error.code === 'auth/no-current-user') {
-                // User is already deleted, just reset the state and navigate
+              props.navigation.reset({ index: 0, routes: [{ name: 'CustomerHome' }] });
+            }} /> : null}
+          </Stack.Screen>
+                </Stack.Navigator>
+          <SideNav
+            visible={sideNavVisible}
+            onClose={() => setSideNavVisible(false)}
+            onSignIn={() => {
+              setSideNavVisible(false);
+              navigationRef.current?.navigate('SignIn' as never);
+            }}
+            onSignUp={() => {
+              setSideNavVisible(false);
+              navigationRef.current?.navigate('SignUp' as never);
+            }}
+            onSignOut={() => {
+              setSideNavVisible(false);
+              authService.signOut().then(() => {
                 setUserData(null);
                 navigationRef.current?.reset({ index: 0, routes: [{ name: 'CustomerHome' as never }] });
-                return;
-              }
-              console.error('Error signing out:', error);
-            });
-          }}
-          onProfile={() => {
-            setSideNavVisible(false);
-            navigationRef.current?.navigate('Profile' as never);
-          }}
-          isLoggedIn={!!userData}
-          userName={userData?.name}
-          userRole={userData?.role}
-        />
-      </NavigationContainer>
-    </ThemeProvider>
+              }).catch((error) => {
+                // If the error is about no current user, this is expected when user is deleted
+                if (error && typeof error === 'object' && 'code' in error && error.code === 'auth/no-current-user') {
+                  // User is already deleted, just reset the state and navigate
+                  setUserData(null);
+                  navigationRef.current?.reset({ index: 0, routes: [{ name: 'CustomerHome' as never }] });
+                  return;
+                }
+                console.error('Error signing out:', error);
+              });
+            }}
+            onProfile={() => {
+              setSideNavVisible(false);
+              navigationRef.current?.navigate('Profile' as never);
+            }}
+            isLoggedIn={!!userData}
+            userName={userData?.name}
+            userRole={userData?.role}
+          />
+        </NavigationContainer>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

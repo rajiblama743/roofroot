@@ -1,158 +1,100 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Platform } from 'react-native';
-import { testBackendConnectivity } from '../firebase/googleCloudStorage';
-import { initializeApiUrl, API_BASE_URL } from '../config/apiConfig';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { authService } from '../firebase';
+import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
 
 const BackendTest: React.FC = () => {
-  const [testResult, setTestResult] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentApiUrl, setCurrentApiUrl] = useState<string>('');
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [testResults, setTestResults] = useState<string[]>([]);
 
-  // Device detection helpers
-  const isSimulator = () => {
-    if (Platform.OS === 'ios') {
-      return __DEV__ && !require('react-native').NativeModules.RCTDeviceInfo?.isPhysicalDevice;
-    }
-    if (Platform.OS === 'android') {
-      return __DEV__ && require('react-native').NativeModules.RCTDeviceInfo?.isEmulator;
-    }
-    return false;
+  const addTestResult = (result: string) => {
+    setTestResults(prev => [...prev, `${new Date().toLocaleTimeString()}: ${result}`]);
   };
 
-  const getDeviceInfo = () => {
-    const deviceType = isSimulator() ? 'Simulator/Emulator' : 'Physical Device';
-    return {
-      platform: Platform.OS,
-      deviceType,
-      apiUrl: currentApiUrl || API_BASE_URL,
-    };
-  };
-
-  // Initialize API URL on component mount
-  useEffect(() => {
-    const initApi = async () => {
-      try {
-        setIsInitializing(true);
-        const apiUrl = await initializeApiUrl();
-        setCurrentApiUrl(apiUrl);
-        console.log('✅ API URL initialized:', apiUrl);
-      } catch (error) {
-        console.error('Failed to initialize API URL:', error);
-        setCurrentApiUrl(API_BASE_URL);
-      } finally {
-        setIsInitializing(false);
-      }
-    };
-
-    initApi();
-  }, []);
-
-  const runConnectivityTest = async () => {
-    setIsLoading(true);
+  const testFirebaseConnection = async () => {
     try {
-      console.log('🧪 Starting backend connectivity test...');
-      const result = await testBackendConnectivity();
-      setTestResult(result);
+      addTestResult('Testing Firebase connection...');
       
-      if (result.success) {
-        Alert.alert(
-          '✅ Backend Test Successful',
-          `Backend is accessible!\n\nAPI Base URL: ${result.details.apiBaseUrl}\nPlatform: ${result.details.platform}\nEnvironment: ${result.details.environment}`
-        );
-      } else {
-        Alert.alert(
-          '❌ Backend Test Failed',
-          `Backend is not accessible.\n\nAPI Base URL: ${result.details.apiBaseUrl}\nError: ${result.details.error || 'Unknown error'}`
-        );
+      // Test 1: Check if Firebase Auth is initialized
+      const currentUser = auth().currentUser;
+      addTestResult(`Auth initialized: ${!!currentUser}`);
+      
+      // Test 2: Check if Firestore is accessible
+      try {
+        const testDoc = await firestore().collection('test').doc('connection-test').get();
+        addTestResult('Firestore connection: OK');
+      } catch (error: any) {
+        addTestResult(`Firestore error: ${error.code || error.message}`);
       }
-    } catch (error) {
-      console.error('Test error:', error);
-      Alert.alert('Error', 'Failed to run connectivity test');
-    } finally {
-      setIsLoading(false);
+      
+      // Test 3: Test user document creation (if user is authenticated)
+      if (currentUser) {
+        try {
+          const userDoc = await firestore().collection('users').doc(currentUser.uid).get();
+          addTestResult(`User document exists: ${userDoc.exists()}`);
+        } catch (error: any) {
+          addTestResult(`User document error: ${error.code || error.message}`);
+        }
+      } else {
+        addTestResult('No authenticated user');
+      }
+      
+    } catch (error: any) {
+      addTestResult(`Connection test failed: ${error.message}`);
     }
   };
 
-  const deviceInfo = getDeviceInfo();
+  const testDocumentCreation = async () => {
+    try {
+      addTestResult('Testing document creation...');
+      
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        addTestResult('No authenticated user for document creation test');
+        return;
+      }
+      
+      // Test creating a user document
+      const testUserData = {
+        name: 'Test User',
+        email: currentUser.email || 'test@example.com',
+        role: 'customer' as const,
+        createdAt: firestore.FieldValue.serverTimestamp(),
+      };
+      
+      await firestore().collection('users').doc(currentUser.uid).set(testUserData);
+      addTestResult('Document creation: SUCCESS');
+      
+    } catch (error: any) {
+      addTestResult(`Document creation failed: ${error.code || error.message}`);
+    }
+  };
 
-  if (isInitializing) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Backend Connectivity Test</Text>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>🔍 Detecting server IP...</Text>
-        </View>
-      </View>
-    );
-  }
+  const clearResults = () => {
+    setTestResults([]);
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Backend Connectivity Test</Text>
+      <Text style={styles.title}>Firebase Connection Test</Text>
       
-      {/* Device Information */}
-      <View style={styles.deviceInfoContainer}>
-        <Text style={styles.deviceInfoTitle}>📱 Device Information:</Text>
-        <Text style={styles.deviceInfoText}>
-          Platform: {deviceInfo.platform.toUpperCase()}{'\n'}
-          Device Type: {deviceInfo.deviceType}{'\n'}
-          API URL: {deviceInfo.apiUrl}
-        </Text>
-      </View>
-      
-      <TouchableOpacity 
-        style={[styles.button, isLoading && styles.buttonDisabled]} 
-        onPress={runConnectivityTest}
-        disabled={isLoading}
-      >
-        <Text style={styles.buttonText}>
-          {isLoading ? 'Testing...' : 'Test Backend Connectivity'}
-        </Text>
+      <TouchableOpacity style={styles.button} onPress={testFirebaseConnection}>
+        <Text style={styles.buttonText}>Test Connection</Text>
       </TouchableOpacity>
-
-      {testResult && (
-        <ScrollView style={styles.resultContainer}>
-          <Text style={styles.resultTitle}>
-            {testResult.success ? '✅ Test Results' : '❌ Test Results'}
-          </Text>
-          <Text style={styles.resultText}>
-            {JSON.stringify(testResult.details, null, 2)}
-          </Text>
-        </ScrollView>
-      )}
-
-      <View style={styles.infoContainer}>
-        <Text style={styles.infoTitle}>🔧 Auto-Detection Features:</Text>
-        <Text style={styles.infoText}>
-          ✅ Progressive loading (instant startup){'\n'}
-          ✅ Smart caching (24-hour cache){'\n'}
-          ✅ Parallel requests (2s timeouts){'\n'}
-          ✅ Background detection (non-blocking){'\n'}
-          ✅ Fallback system (reliable){'\n\n'}
-          💡 App starts immediately, IP detection runs in background
-        </Text>
-      </View>
-
-      <View style={styles.infoContainer}>
-        <Text style={styles.infoTitle}>🔧 URL Configuration:</Text>
-        <Text style={styles.infoText}>
-          • iOS Simulator: localhost:3000{'\n'}
-          • iOS Physical: Cached IP or auto-detected{'\n'}
-          • Android Emulator: 10.0.2.2:3000{'\n'}
-          • Android Physical: Cached IP or auto-detected{'\n\n'}
-          💡 Cached IPs last 24 hours for instant startup!
-        </Text>
-      </View>
-
-      <View style={styles.infoContainer}>
-        <Text style={styles.infoTitle}>Troubleshooting Tips:</Text>
-        <Text style={styles.infoText}>
-          • Ensure backend server is running: cd backend && npm start{'\n'}
-          • Check if device can reach the backend IP{'\n'}
-          • Verify both devices are on same WiFi network{'\n'}
-          • Check console logs for detailed error information
-        </Text>
+      
+      <TouchableOpacity style={styles.button} onPress={testDocumentCreation}>
+        <Text style={styles.buttonText}>Test Document Creation</Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity style={styles.clearButton} onPress={clearResults}>
+        <Text style={styles.buttonText}>Clear Results</Text>
+      </TouchableOpacity>
+      
+      <View style={styles.resultsContainer}>
+        <Text style={styles.resultsTitle}>Test Results:</Text>
+        {testResults.map((result, index) => (
+          <Text key={index} style={styles.resultText}>{result}</Text>
+        ))}
       </View>
     </View>
   );
@@ -165,89 +107,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    textAlign: 'center',
     marginBottom: 20,
-    color: '#333',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 18,
-    color: '#666',
     textAlign: 'center',
-  },
-  deviceInfoContainer: {
-    backgroundColor: '#e8f5e8',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  deviceInfoTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#2e7d32',
-  },
-  deviceInfoText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#333',
-    fontFamily: 'monospace',
   },
   button: {
     backgroundColor: '#007AFF',
     padding: 15,
     borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
   },
-  buttonDisabled: {
-    backgroundColor: '#ccc',
+  clearButton: {
+    backgroundColor: '#FF3B30',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 20,
   },
   buttonText: {
     color: 'white',
-    fontSize: 16,
+    textAlign: 'center',
     fontWeight: 'bold',
   },
-  resultContainer: {
+  resultsContainer: {
+    flex: 1,
     backgroundColor: 'white',
     padding: 15,
     borderRadius: 8,
-    marginBottom: 20,
-    maxHeight: 300,
   },
-  resultTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333',
-  },
-  resultText: {
-    fontSize: 12,
-    fontFamily: 'monospace',
-    color: '#666',
-  },
-  infoContainer: {
-    backgroundColor: '#e3f2fd',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 15,
-  },
-  infoTitle: {
+  resultsTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 10,
-    color: '#1976d2',
   },
-  infoText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#333',
+  resultText: {
+    fontSize: 12,
+    marginBottom: 5,
+    fontFamily: 'monospace',
   },
 });
 

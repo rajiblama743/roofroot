@@ -222,9 +222,14 @@ const ListingDetailsScreen: React.FC<ListingDetailsScreenProps> = ({ listing, on
         if (user) {
           const userData = await authService.getUserData(user.uid);
           setCurrentUser(userData);
+        } else {
+          // No user authenticated - this is fine for public viewing
+          setCurrentUser(null);
         }
       } catch (error) {
         console.error('Error getting current user:', error);
+        // Set to null on error to avoid blocking the UI
+        setCurrentUser(null);
       }
     };
     getUser();

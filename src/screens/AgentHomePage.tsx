@@ -101,21 +101,35 @@ const AgentHomePage: React.FC<AgentHomePageProps> = ({ onListingDetails }) => {
   }, []);
 
   const loadUserData = useCallback(async () => {
+    console.log('👤 Loading user data...');
     const currentUser = authService.getCurrentUser();
     if (currentUser) {
+      console.log('✅ Current user found:', currentUser.uid);
       setCurrentUserId(currentUser.uid);
       const userData = await authService.getUserData(currentUser.uid);
       if (userData) {
+        console.log('✅ User data loaded:', userData.name);
         setUserName(userData.name);
+      } else {
+        console.error('❌ No user data found in Firestore');
       }
+    } else {
+      console.error('❌ No current user found');
     }
   }, []);
 
   const loadAgentListings = useCallback(async () => {
     try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser) {
+        console.error('No current user found');
+        setLoading(false);
+        return;
+      }
+
       const allListings = await realEstateService.getAllListings();
       // Filter listings to show only those created by the current agent
-      const agentListings = allListings.filter(listing => listing.agentId === currentUserId);
+      const agentListings = allListings.filter(listing => listing.agentId === currentUser.uid);
       setListings(agentListings);
     } catch (error) {
       console.error('Error loading agent listings:', error);
@@ -123,13 +137,26 @@ const AgentHomePage: React.FC<AgentHomePageProps> = ({ onListingDetails }) => {
     } finally {
       setLoading(false);
     }
-  }, [currentUserId]);
+  }, []);
 
   const handleCreateListing = useCallback(() => {
+    console.log('🔄 Creating new listing...');
+    console.log('👤 Current user name:', userName);
+    console.log('🆔 Current user ID:', currentUserId);
+    
+    // Check if user data is loaded
+    if (!currentUserId || !userName) {
+      console.error('❌ User data not loaded yet');
+      Alert.alert('Error', 'Please wait for user data to load before creating a listing');
+      return;
+    }
+    
     setFormMode('create');
     setEditingListing(null);
     setShowListingForm(true);
-  }, []);
+    
+    console.log('✅ Listing form should now be visible');
+  }, [userName, currentUserId]);
 
   const handleEditListing = useCallback((listing: RealEstateListing) => {
     setFormMode('edit');
@@ -164,27 +191,44 @@ const AgentHomePage: React.FC<AgentHomePageProps> = ({ onListingDetails }) => {
 
   const handleListingSubmit = useCallback(async (listingData: Omit<RealEstateListing, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser) {
+        Alert.alert('Error', 'No authenticated user found');
+        return;
+      }
+
+      console.log('📝 Submitting listing with data:', listingData);
+      console.log('👤 Current user:', currentUser.uid);
+      console.log('👤 User name:', userName);
+
       // Add agent information to the listing
       const listingWithAgentInfo = {
         ...listingData,
-        agentId: currentUserId,
-        agentName: userName,
+        agentId: currentUser.uid,
+        agentName: userName || 'Unknown Agent',
       };
 
+      console.log('📋 Final listing data:', listingWithAgentInfo);
+
       if (formMode === 'create') {
+        console.log('🆕 Creating new listing...');
         await realEstateService.createListing(listingWithAgentInfo);
         Alert.alert('Success', 'Listing created successfully');
+        console.log('✅ Listing created successfully');
       } else if (editingListing?.id) {
+        console.log('✏️ Updating existing listing...');
         await realEstateService.updateListing(editingListing.id, listingWithAgentInfo);
         Alert.alert('Success', 'Listing updated successfully');
+        console.log('✅ Listing updated successfully');
       }
+      
       setShowListingForm(false);
       loadAgentListings();
     } catch (error) {
-      console.error('Error saving listing:', error);
-      Alert.alert('Error', 'Failed to save listing');
+      console.error('❌ Error saving listing:', error);
+      Alert.alert('Error', `Failed to save listing: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [formMode, editingListing, loadAgentListings, currentUserId, userName]);
+  }, [formMode, editingListing, loadAgentListings, userName]);
 
   // Memoize the listings content to prevent unnecessary re-renders
   const memoizedListingsContent = useMemo(() => {
@@ -253,33 +297,14 @@ const AgentHomePage: React.FC<AgentHomePageProps> = ({ onListingDetails }) => {
         {memoizedListingsContent}
       </ScrollView>
 
-      {/* Listing Form Modal */}
-      <Modal
+      {/* Listing Form */}
+      <ListingForm
         visible={showListingForm}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <View style={[styles.modalContainer, { backgroundColor: colors.primary }]}>
-          <View style={[styles.modalHeader, { backgroundColor: colors.secondary, borderBottomColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              {formMode === 'create' ? 'Create New Listing' : 'Edit Listing'}
-            </Text>
-            <TouchableOpacity 
-              style={[styles.closeButton, { backgroundColor: colors.tertiary }]} 
-              onPress={() => setShowListingForm(false)}
-            >
-              <Text style={[styles.closeButtonText, { color: colors.textSecondary }]}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          <ListingForm
-            visible={showListingForm}
-            onClose={() => setShowListingForm(false)}
-            onSubmit={handleListingSubmit}
-            listing={editingListing}
-            mode={formMode}
-          />
-        </View>
-      </Modal>
+        onClose={() => setShowListingForm(false)}
+        onSubmit={handleListingSubmit}
+        listing={editingListing}
+        mode={formMode}
+      />
     </View>
   );
 };
@@ -292,15 +317,18 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
     borderBottomWidth: 1,
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 8,
+    textAlign: 'center',
   },
   headerSubtitle: {
     fontSize: 16,
     marginBottom: 20,
+    textAlign: 'center',
   },
   createButton: {
     paddingVertical: 12,
@@ -447,32 +475,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  modalContainer: {
-    flex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
-    borderBottomWidth: 1,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+
 });
 
 export default AgentHomePage; 

@@ -20,6 +20,8 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ onSignInSuccess, onBack, on
 
   const getErrorMessage = (errorCode: string) => {
     switch (errorCode) {
+      case 'auth/invalid-credential':
+        return 'Invalid email or password. Please check your credentials and try again.';
       case 'auth/user-not-found':
         return 'No account found with this email address. Please check your email or create a new account.';
       case 'auth/wrong-password':
@@ -32,23 +34,40 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ onSignInSuccess, onBack, on
         return 'Too many failed attempts. Please try again later.';
       case 'auth/network-request-failed':
         return 'Network error. Please check your internet connection.';
+      case 'auth/invalid-input':
+        return 'Email and password are required.';
       default:
         return 'An error occurred. Please try again.';
     }
   };
 
   const handleSignIn = async () => {
-    if (!email || !password) {
-      Alert.alert('Email and password are required');
+    // Validate inputs
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+    
+    if (!trimmedEmail || !trimmedPassword) {
+      Alert.alert('Sign in failed', 'Email and password are required.');
       return;
     }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      Alert.alert('Sign in failed', 'Please enter a valid email address.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const result = await authService.signIn(email, password);
+      console.log('🔐 Attempting sign in with email:', trimmedEmail);
+      const result = await authService.signIn(trimmedEmail, trimmedPassword);
       
       // Clear form
       setEmail('');
       setPassword('');
+      
+      console.log('✅ Sign in successful, user data:', result.userData);
       
       // Check if we have user data
       if (result.userData) {
@@ -71,6 +90,7 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ onSignInSuccess, onBack, on
       Alert.alert('Sign in successful!', 'Welcome back!');
       onSignInSuccess?.();
     } catch (error: any) {
+      console.error('❌ Sign in error:', error);
       const errorMessage = getErrorMessage(error.code);
       Alert.alert('Sign in failed', errorMessage);
       
@@ -87,6 +107,66 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ onSignInSuccess, onBack, on
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    try {
+      const result = await authService.testFirebaseConnection();
+      Alert.alert(
+        'Firebase Connection Test',
+        `Firebase Initialized: ${result.firebaseInitialized}\n` +
+        `Auth Available: ${result.authAvailable}\n` +
+        `Firestore Available: ${result.firestoreAvailable}\n` +
+        `Current User: ${result.currentUser ? result.currentUser.uid : 'None'}`
+      );
+    } catch (error) {
+      Alert.alert('Test Failed', 'Could not test Firebase connection');
+    }
+  };
+
+  const handleTestAdminAccount = async () => {
+    if (!email.trim()) {
+      Alert.alert('Test Failed', 'Please enter an email address first');
+      return;
+    }
+    
+    try {
+      const result = await authService.testAdminAccount(email.trim());
+      Alert.alert(
+        'Admin Account Test',
+        `Auth Exists: ${result.authExists}\n` +
+        `Firestore Exists: ${result.firestoreExists}\n` +
+        `Role: ${result.role || 'None'}\n` +
+        `Error: ${result.error || 'None'}`
+      );
+    } catch (error) {
+      Alert.alert('Test Failed', 'Could not test admin account');
+    }
+  };
+
+  const handleVerifyCredentials = async () => {
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+    
+    if (!trimmedEmail || !trimmedPassword) {
+      Alert.alert('Test Failed', 'Please enter both email and password');
+      return;
+    }
+    
+    try {
+      const { adminService } = await import('../firebase/adminService');
+      const result = await adminService.verifyAdminCredentials(trimmedEmail, trimmedPassword);
+      Alert.alert(
+        'Credential Verification',
+        `Auth Exists: ${result.authExists}\n` +
+        `Firestore Exists: ${result.firestoreExists}\n` +
+        `Role: ${result.role || 'None'}\n` +
+        `Can Sign In: ${result.canSignIn}\n` +
+        `Error: ${result.error || 'None'}`
+      );
+    } catch (error) {
+      Alert.alert('Test Failed', 'Could not verify credentials');
     }
   };
 
@@ -156,6 +236,34 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ onSignInSuccess, onBack, on
             >
               <Text style={styles.buttonText}>
                 {loading ? 'Signing In...' : 'Sign In'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Debug button - remove in production */}
+            <TouchableOpacity 
+              style={[styles.debugButton, { backgroundColor: colors.tertiary }]} 
+              onPress={handleTestConnection}
+            >
+              <Text style={[styles.debugButtonText, { color: colors.textSecondary }]}>
+                Test Firebase Connection
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.debugButton, { backgroundColor: colors.tertiary }]} 
+              onPress={handleTestAdminAccount}
+            >
+              <Text style={[styles.debugButtonText, { color: colors.textSecondary }]}>
+                Test Admin Account
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.debugButton, { backgroundColor: colors.tertiary }]} 
+              onPress={handleVerifyCredentials}
+            >
+              <Text style={[styles.debugButtonText, { color: colors.textSecondary }]}>
+                Verify Credentials
               </Text>
             </TouchableOpacity>
           </View>
@@ -301,6 +409,21 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  debugButton: {
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 16,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  debugButtonText: {
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });

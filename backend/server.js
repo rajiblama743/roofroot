@@ -1,49 +1,42 @@
 const express = require('express');
+const cors = require('cors');
 const multer = require('multer');
 const { Storage } = require('@google-cloud/storage');
-const cors = require('cors');
-const path = require('path');
-const os = require('os');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Function to get the server's IP address
-const getServerIP = () => {
-  const interfaces = os.networkInterfaces();
-  
-  // Look for the first non-internal IPv4 address
-  for (const name of Object.keys(interfaces)) {
-    for (const interface of interfaces[name]) {
-      // Skip internal (i.e. 127.0.0.1) and non-IPv4 addresses
-      if (interface.family === 'IPv4' && !interface.internal) {
-        return interface.address;
-      }
-    }
-  }
-  
-  return 'localhost'; // Fallback
-};
+// Initialize Firebase Admin SDK (with error handling)
+let admin = null;
+let firebaseInitialized = false;
 
-const SERVER_IP = getServerIP();
+try {
+  const serviceAccount = require('./firebase-admin-key.json');
+  
+  // Check if the service account has placeholder values
+  if (serviceAccount.private_key_id === 'YOUR_PRIVATE_KEY_ID' || 
+      serviceAccount.private_key === '-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY_HERE\n-----END PRIVATE KEY-----\n') {
+    console.log('⚠️  Firebase Admin SDK not properly configured - using placeholder values');
+    console.log('📝 Please update firebase-admin-key.json with real values from Firebase Console');
+    firebaseInitialized = false;
+  } else {
+    admin = require('firebase-admin');
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      storageBucket: 'roofroot-2bdfb.firebasestorage.app'
+    });
+    firebaseInitialized = true;
+    console.log('✅ Firebase Admin SDK initialized successfully');
+  }
+} catch (error) {
+  console.error('❌ Firebase Admin SDK initialization failed:', error.message);
+  console.log('📝 Please ensure firebase-admin-key.json exists and contains valid credentials');
+  firebaseInitialized = false;
+}
 
 // Middleware
-app.use(cors({
-  origin: true, // Allow all origins in development
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-}));
+app.use(cors());
 app.use(express.json());
-
-// Initialize Google Cloud Storage
-const storage = new Storage({
-  projectId: 'roofroot-2bdfb', // Your Firebase project ID
-  keyFilename: path.join(__dirname, 'service-account-key.json'), // Path to your service account key
-});
-
-const BUCKET_NAME = 'roofroot-storage'; // Update this to match your bucket name
-const bucket = storage.bucket(BUCKET_NAME);
 
 // Configure multer for file uploads
 const upload = multer({
@@ -53,171 +46,287 @@ const upload = multer({
   },
 });
 
-// Server info endpoint - returns the server's IP and port
-app.get('/server-info', (req, res) => {
-  console.log('Server info requested from:', req.ip);
-  res.json({
-    serverIP: SERVER_IP,
-    port: PORT,
-    fullUrl: `http://${SERVER_IP}:${PORT}`,
-    timestamp: new Date().toISOString(),
-    platform: os.platform(),
-    hostname: os.hostname(),
+// Initialize Google Cloud Storage
+const storage = new Storage({
+  keyFilename: './google-cloud-key.json',
+  projectId: 'roofroot-2bdfb',
+});
+
+const bucket = storage.bucket('roofroot-2bdfb.firebasestorage.app');
+
+// Routes
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'RoofRoot Backend API is running!',
+    firebaseInitialized: firebaseInitialized
   });
-});
-
-// Upload image endpoint
-app.post('/upload-image', upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-
-    const filename = req.body.filename || `image-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-    const file = bucket.file(`listing-images/${filename}`);
-
-    // Upload file to Google Cloud Storage
-    await file.save(req.file.buffer, {
-      metadata: {
-        contentType: req.file.mimetype,
-        cacheControl: 'public, max-age=31536000',
-      },
-    });
-
-    // Generate signed URL for download (instead of making public)
-    const [downloadUrl] = await file.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + 1000 * 60 * 60 * 24 * 365, // 1 year
-    });
-
-    console.log(`Successfully uploaded ${filename} to Google Cloud Storage`);
-    
-    res.json({
-      success: true,
-      filename,
-      downloadUrl: downloadUrl,
-    });
-  } catch (error) {
-    console.error('Error uploading to Google Cloud Storage:', error);
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack
-    });
-    res.status(500).json({ 
-      error: 'Failed to upload image',
-      details: error.message 
-    });
-  }
-});
-
-// Get signed URL for direct upload
-app.post('/get-signed-url', async (req, res) => {
-  try {
-    const { filename, contentType = 'image/jpeg' } = req.body;
-    
-    if (!filename) {
-      return res.status(400).json({ error: 'Filename is required' });
-    }
-
-    const file = bucket.file(`listing-images/${filename}`);
-    
-    // Generate signed URL for upload
-    const [uploadUrl] = await file.getSignedUrl({
-      action: 'write',
-      expires: Date.now() + 1000 * 60 * 15, // 15 minutes
-      contentType,
-    });
-
-    // Generate signed URL for download
-    const [downloadUrl] = await file.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + 1000 * 60 * 60 * 24 * 365, // 1 year
-    });
-
-    res.json({
-      uploadUrl,
-      downloadUrl,
-    });
-  } catch (error) {
-    console.error('Error generating signed URL:', error);
-    res.status(500).json({ error: 'Failed to generate signed URL' });
-  }
-});
-
-// Get download URL endpoint
-app.post('/get-download-url', async (req, res) => {
-  try {
-    const { filename } = req.body;
-    
-    if (!filename) {
-      return res.status(400).json({ error: 'Filename is required' });
-    }
-
-    const file = bucket.file(`listing-images/${filename}`);
-    
-    // Get signed URL for download
-    const [downloadUrl] = await file.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + 1000 * 60 * 60 * 24 * 365, // 1 year
-    });
-
-    res.json({
-      downloadUrl,
-    });
-  } catch (error) {
-    console.error('Error getting download URL:', error);
-    res.status(500).json({ error: 'Failed to get download URL' });
-  }
-});
-
-// Delete image endpoint
-app.delete('/delete-image', async (req, res) => {
-  try {
-    const { filename } = req.body;
-    
-    if (!filename) {
-      return res.status(400).json({ error: 'Filename is required' });
-    }
-
-    const file = bucket.file(`listing-images/${filename}`);
-    await file.delete();
-
-    console.log(`Successfully deleted ${filename} from Google Cloud Storage`);
-    
-    res.json({
-      success: true,
-      message: 'Image deleted successfully',
-    });
-  } catch (error) {
-    console.error('Error deleting from Google Cloud Storage:', error);
-    res.status(500).json({ error: 'Failed to delete image' });
-  }
 });
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  console.log('Health check requested from:', req.ip);
   res.json({ 
-    status: 'OK', 
+    status: 'healthy', 
     timestamp: new Date().toISOString(),
-    server: 'RoofRoot Backend',
-    version: '1.0.0'
+    firebase: firebaseInitialized ? 'initialized' : 'not configured'
   });
 });
 
-// Test endpoint for debugging
-app.get('/ping', (req, res) => {
-  console.log('Ping requested from:', req.ip);
-  res.json({ 
-    message: 'pong',
-    timestamp: new Date().toISOString(),
-    clientIP: req.ip,
-    userAgent: req.get('User-Agent')
-  });
+// Agent Request Management Endpoints
+app.post('/api/agent-requests/approve', async (req, res) => {
+  if (!firebaseInitialized) {
+    return res.status(503).json({
+      success: false,
+      error: 'Firebase Admin SDK not configured. Please set up firebase-admin-key.json with real credentials.'
+    });
+  }
+
+  try {
+    const { requestId, adminUid } = req.body;
+    
+    if (!requestId || !adminUid) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Request ID and admin UID are required' 
+      });
+    }
+
+    console.log(`🔍 Processing agent request approval for request ID: ${requestId}`);
+
+    // Get the agent request from Firestore
+    const db = admin.firestore();
+    const requestDoc = await db.collection('agentRequests').doc(requestId).get();
+    
+    if (!requestDoc.exists) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Agent request not found' 
+      });
+    }
+
+    const requestData = requestDoc.data();
+    console.log('📋 Agent request data:', {
+      name: requestData.name,
+      email: requestData.email,
+      agency: requestData.agency,
+      status: requestData.status
+    });
+
+    // Verify admin permissions
+    const adminDoc = await db.collection('users').doc(adminUid).get();
+    if (!adminDoc.exists || adminDoc.data().role !== 'admin') {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Unauthorized: Admin privileges required' 
+      });
+    }
+
+    // Check if user already exists in Firebase Auth
+    try {
+      const userRecord = await admin.auth().getUserByEmail(requestData.email);
+      return res.status(409).json({ 
+        success: false, 
+        error: 'User already exists in Firebase Authentication' 
+      });
+    } catch (error) {
+      if (error.code !== 'auth/user-not-found') {
+        throw error;
+      }
+      // User doesn't exist, proceed with creation
+    }
+
+    // Create user in Firebase Auth
+    const userRecord = await admin.auth().createUser({
+      email: requestData.email,
+      password: requestData.password,
+      displayName: requestData.name,
+    });
+
+    console.log('✅ Firebase Auth user created:', userRecord.uid);
+
+    // Create user document in Firestore
+    await db.collection('users').doc(userRecord.uid).set({
+      name: requestData.name,
+      email: requestData.email,
+      role: 'agent',
+      agency: requestData.agency,
+      phone: requestData.phone || null,
+      companyDescription: requestData.companyDescription || null,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      approvedBy: adminUid,
+      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    console.log('✅ Firestore user document created');
+
+    // Update agent request status and then delete the document
+    await db.collection('agentRequests').doc(requestId).update({
+      status: 'approved',
+      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+      approvedBy: adminUid,
+      authUid: userRecord.uid,
+    });
+
+    console.log('✅ Agent request status updated to approved');
+
+    // Delete the agent request document after successful approval
+    await db.collection('agentRequests').doc(requestId).delete();
+    console.log('🗑️  Agent request document deleted from collection');
+
+    res.json({
+      success: true,
+      message: `Agent account created successfully for ${requestData.name}`,
+      userUid: userRecord.uid,
+      email: requestData.email
+    });
+
+  } catch (error) {
+    console.error('❌ Error approving agent request:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Failed to approve agent request' 
+    });
+  }
 });
 
+app.post('/api/agent-requests/reject', async (req, res) => {
+  if (!firebaseInitialized) {
+    return res.status(503).json({
+      success: false,
+      error: 'Firebase Admin SDK not configured. Please set up firebase-admin-key.json with real credentials.'
+    });
+  }
+
+  try {
+    const { requestId, adminUid } = req.body;
+    
+    if (!requestId || !adminUid) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Request ID and admin UID are required' 
+      });
+    }
+
+    console.log(`🔍 Processing agent request rejection for request ID: ${requestId}`);
+
+    // Get the agent request from Firestore
+    const db = admin.firestore();
+    const requestDoc = await db.collection('agentRequests').doc(requestId).get();
+    
+    if (!requestDoc.exists) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Agent request not found' 
+      });
+    }
+
+    const requestData = requestDoc.data();
+    console.log('📋 Agent request data:', {
+      name: requestData.name,
+      email: requestData.email,
+      agency: requestData.agency,
+      status: requestData.status
+    });
+
+    // Verify admin permissions
+    const adminDoc = await db.collection('users').doc(adminUid).get();
+    if (!adminDoc.exists || adminDoc.data().role !== 'admin') {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Unauthorized: Admin privileges required' 
+      });
+    }
+
+    // Update agent request status to rejected and then delete the document
+    await db.collection('agentRequests').doc(requestId).update({
+      status: 'rejected',
+      rejectedAt: admin.firestore.FieldValue.serverTimestamp(),
+      rejectedBy: adminUid,
+    });
+
+    console.log('✅ Agent request status updated to rejected');
+
+    // Delete the agent request document after rejection
+    await db.collection('agentRequests').doc(requestId).delete();
+    console.log('🗑️  Agent request document deleted from collection');
+
+    res.json({
+      success: true,
+      message: `Agent request for ${requestData.name} has been rejected`,
+      email: requestData.email
+    });
+
+  } catch (error) {
+    console.error('❌ Error rejecting agent request:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Failed to reject agent request' 
+    });
+  }
+});
+
+// Image upload endpoint
+app.post('/api/upload-images', upload.array('images', 10), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No images provided' });
+    }
+
+    const uploadedUrls = [];
+    const uploadPromises = req.files.map(async (file, index) => {
+      try {
+        const fileName = `listings/${Date.now()}-${index}-${file.originalname}`;
+        const fileBuffer = file.buffer;
+        
+        const fileUpload = bucket.file(fileName);
+        await fileUpload.save(fileBuffer, {
+          metadata: {
+            contentType: file.mimetype,
+          },
+        });
+
+        // Make the file publicly accessible
+        await fileUpload.makePublic();
+        
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+        uploadedUrls.push(publicUrl);
+        
+        console.log(`✅ Image uploaded: ${fileName}`);
+        return publicUrl;
+      } catch (error) {
+        console.error(`❌ Error uploading image ${index}:`, error);
+        throw error;
+      }
+    });
+
+    await Promise.all(uploadPromises);
+    
+    res.json({ 
+      success: true, 
+      urls: uploadedUrls,
+      message: `${uploadedUrls.length} images uploaded successfully` 
+    });
+  } catch (error) {
+    console.error('❌ Error in image upload:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to upload images' 
+    });
+  }
+});
+
+// Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`🚀 RoofRoot Backend Server running on port ${PORT}`);
+  console.log(`📊 Health check available at: http://localhost:${PORT}/health`);
+  console.log(`🔧 Firebase Admin SDK: ${firebaseInitialized ? '✅ Initialized' : '❌ Not configured'}`);
+  
+  if (!firebaseInitialized) {
+    console.log('');
+    console.log('📝 To enable agent request management:');
+    console.log('1. Go to Firebase Console > Project Settings > Service Accounts');
+    console.log('2. Generate new private key');
+    console.log('3. Save as firebase-admin-key.json in the backend directory');
+    console.log('4. Restart the server');
+    console.log('');
+  }
 }); 
